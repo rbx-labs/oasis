@@ -1,3 +1,13 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.docker
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,7 +30,7 @@ var/
 *.egg
 
 # Virtual Environment
-.venv-*/
+venv/
 ENV/
 
 # IDE
@@ -32,21 +42,17 @@ ENV/
 # Environment variables
 .env
 .env.*
-!.env.example
 
 # Database
 *.db
 *.sqlite3
 sql_app.db
 
-# Logs
-*.log
-
-# Testing
+# Tests
 .coverage
-htmlcov/
 .pytest_cache/
-.cursorrules
+htmlcov/
 
-# Data
-data/
+# Documentation
+docs/
+*.md 

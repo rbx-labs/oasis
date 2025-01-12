@@ -1,1 +1,16 @@
-fastapi[standard]
+fastapi>=0.115.6
+uvicorn>=0.34.0
+sqlalchemy>=2.0.36
+pydantic>=2.10.4
+pydantic-settings>=2.7.0
+python-multipart>=0.0.7
+azure-cognitiveservices-speech>=1.41.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.1.0+cpu
+torchaudio>=2.1.0+cpu
+numpy>=1.24.0
+soundfile>=0.12.1
+openai>=1.0.0,<2.0.0
+requests>=2.32.3
+APScheduler==3.11.0
+pydub==0.25.1

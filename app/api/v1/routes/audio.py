@@ -6,7 +6,7 @@ from app.api import deps
 from app.schemas.audio import (
     Audio, AudioCreate, DiarizationSegment, DiarizationSegmentCreate,
     SpeakerClip, SpeakerClipCreate, Conversation, ConversationCreate,
-    GladiaResponseCreate
+    GladiaResponseCreate, TranscriptionCreate
 )
 from app.schemas.vad_segment import VadSegmentCreate
 from app.crud.crud_vad_segment import crud_vad_segments
@@ -415,7 +415,9 @@ async def process_latest_audio_with_gladia(
                         "content": data["transcript"]
                     })
                 print("conversation_data", conversation_data)
-                result = processor.analyze_text(conversation_data)
+                # Convert conversation data to string format for analysis
+                conversation_text = "\n".join([f"{data['speaker']}: {data['content']}" for data in conversation_data])
+                result = processor.analyze_text(conversation_text)
                 return result
             except Exception as e:
                 logger.error(f"Error processing conversation with OpenAI: {str(e)}")

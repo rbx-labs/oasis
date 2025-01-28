@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from app.api import deps
 from app.schemas.audio import (
     Audio, AudioCreate, DiarizationSegment, DiarizationSegmentCreate,
@@ -23,7 +23,7 @@ from app.utils.openai_processing import OpenAIProcessor
 import tempfile
 import logging
 import os
-from app.utils.audio_processing import AudioPreprocessor
+from app.utils.audio_processor import AudioProcessor
 import time
 import io
 import openai
@@ -34,6 +34,9 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import wave
 import array
+from app.utils.gladia_processor import GladiaProcessor
+from app.utils.whisper_processor import WhisperProcessor
+from app.utils.conversation_processor import ConversationProcessor
 
 # Configure logging
 logging.basicConfig(
@@ -42,8 +45,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize audio preprocessor
-audio_preprocessor = AudioPreprocessor()
+# Initialize processors as module-level singletons
+audio_processor = AudioProcessor()
+gladia_processor = GladiaProcessor()
+whisper_processor = WhisperProcessor()
+conversation_processor = ConversationProcessor()
 
 router = APIRouter()
 
@@ -76,7 +82,7 @@ async def upload_audio(
     
     # Process audio with Silero VAD
     try:
-        processed_audio, speech_ratio = audio_preprocessor.process_audio(contents)
+        processed_audio, speech_ratio = audio_processor.process_audio(contents)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
         
         if speech_ratio < 0.01:  # Less than 1% speech
@@ -114,12 +120,7 @@ async def get_latest_audio(
     """
     Get the most recent audio file
     """
-    audio = db.query(AudioModel).order_by(AudioModel.created_at.desc()).first()
-    if not audio:
-        raise HTTPException(
-            status_code=404,
-            detail="No audio files found"
-        )
+    audio = await audio_processor.get_latest_audio(db)
     logger.info(f"Processing audio file: {audio.filename}, created at: {audio.created_at}")
     logger.info(f"Audio data size: {len(audio.waveform)} bytes")
     return audio
@@ -326,428 +327,101 @@ async def process_latest_audio_with_gladia(
     """
     Process the latest audio file with Gladia API for diarization and transcription
     """
-    # Get latest audio
-    audio = db.query(AudioModel).order_by(AudioModel.created_at.desc()).first()
-    if not audio:
-        raise HTTPException(
-            status_code=404,
-            detail="No audio files found"
-        )
-    
     try:
-        # Create temporary file that will be used across all steps
+        # Step 1: Get latest audio
+        audio = await audio_processor.get_latest_audio(db)
+        
+        # Create temporary file for processing
         temp_audio = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
         try:
             temp_audio.write(audio.waveform)
             temp_audio.flush()
             
-            # Step 1: Gladia Diarization
+            # Step 2: Gladia Diarization
             logger.info("Starting Step 1: Gladia Diarization")
-            segments = []
-            gladia_response = None
-            
-            # Call Gladia API for upload
-            files = [("audio", (temp_audio.name, open(temp_audio.name, 'rb'), "audio/wav"))]
-            headers = {
-                'x-gladia-key': settings.GLADIA_API_KEY,
-                'accept': 'application/json'
-            }
-            
-            logger.info("Uploading file to Gladia...")
-            upload_response = requests.post(
-                "https://api.gladia.io/v2/upload/",
-                headers=headers,
-                files=files
-            )
-            
-            if upload_response.status_code != 200:
-                raise HTTPException(
-                    status_code=upload_response.status_code,
-                    detail=f"Step 1 failed: Gladia API upload error: {upload_response.text}"
-                )
-            
-            upload_result = upload_response.json()
-            audio_url = upload_result.get("audio_url")
-            
-            if not audio_url:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Step 1 failed: Failed to get audio URL from Gladia upload response"
-                )
-            
-            # Request transcription with diarization
-            headers['Content-Type'] = 'application/json'
-            transcription_data = {
-                "audio_url": audio_url,
-                "diarization": True
-            }
-            
-            logger.info("Requesting transcription from Gladia API...")
-            transcription_response = requests.post(
-                "https://api.gladia.io/v2/transcription/",
-                headers=headers,
-                json=transcription_data
-            )
-            
-            if transcription_response.status_code not in [200, 201]:
-                raise HTTPException(
-                    status_code=transcription_response.status_code,
-                    detail=f"Step 1 failed: Gladia API transcription error: {transcription_response.text}"
-                )
-            
-            transcription_result = transcription_response.json()
-            result_url = transcription_result.get("result_url")
-            
-            if not result_url:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Step 1 failed: Failed to get result URL from Gladia transcription response"
-                )
-            
-            # Poll for results
-            while True:
-                logger.info("Polling for Gladia results...")
-                poll_response = requests.get(result_url, headers=headers)
-                
-                if poll_response.status_code != 200:
-                    raise HTTPException(
-                        status_code=poll_response.status_code,
-                        detail=f"Step 1 failed: Gladia API polling error: {poll_response.text}"
-                    )
-                
-                poll_result = poll_response.json()
-                status = poll_result.get("status")
-                
-                if status == "done":
-                    logger.info("Gladia transcription completed")
-                    
-                    # Save Gladia API response
-                    gladia_response_data = GladiaResponseCreate(
-                        audio_id=audio.id,
-                        response_data=poll_result
-                    )
-                    gladia_response = crud_gladia.create(db, obj_in=gladia_response_data)
-                    logger.info(f"Saved Gladia API response with ID: {gladia_response.id}")
-                    
-                    transcription_data = poll_result.get("result", {}).get("transcription", {})
-                    utterances = transcription_data.get("utterances", [])
-                    
-                    if not utterances:
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Step 1 failed: No utterances found in transcription result"
-                        )
-                    
-                    logger.info(f"Processing {len(utterances)} utterances")
-                    
-                    # Process diarization results
-                    for utterance in utterances:
-                        if utterance.get('end', 0) - utterance.get('start', 0) >= 1.0:
-                            segment_data = DiarizationSegmentCreate(
-                                audio_id=audio.id,
-                                speaker=f"Speaker_{utterance.get('speaker', 'unknown')}",
-                                start_time=utterance.get('start', 0),
-                                end_time=utterance.get('end', 0),
-                                confidence=utterance.get('confidence', 0),
-                                raw_response=utterance
-                            )
-                            db_segment = crud_diarization.create(db, obj_in=segment_data)
-                            segments.append(db_segment)
-                    
-                    if not segments:
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Step 1 failed: No valid segments created from utterances"
-                        )
-                    break  # Exit the polling loop when done
-                    
-                elif status == "error":
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Step 1 failed: Gladia transcription failed: {poll_result}"
-                    )
-                
-                # Wait before next poll
-                time.sleep(20)
-        
+            audio_url = await gladia_processor.upload_to_gladia(temp_audio.name)
+            segments = await gladia_processor.process_diarization(audio_url, audio.id, db)
             logger.info("Step 1 completed successfully")
             
-            # Step 2: Create speaker clips
+            # Step 3: Create speaker clips
             logger.info("Starting Step 2: Create speaker clips")
-            speaker_clips = {}
+            audio_data = AudioSegment.from_wav(temp_audio.name)
+            speaker_clips = await audio_processor.create_speaker_clips(audio_data, segments, audio.id, db)
+            logger.info("Step 2 completed successfully")
             
-            try:
-                audio_data = AudioSegment.from_wav(temp_audio.name)
-                
-                for speaker in set(segment.speaker for segment in segments):
-                    speaker_segments = [s for s in segments if s.speaker == speaker]
-                    combined_audio = AudioSegment.empty()
-                    
-                    for segment in speaker_segments:
-                        start_ms = int(segment.start_time * 1000)
-                        end_ms = int(segment.end_time * 1000)
-                        segment_audio = audio_data[start_ms:end_ms]
-                        combined_audio += segment_audio
-                    
-                    # Export combined audio for the speaker
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_speaker:
-                        combined_audio.export(temp_speaker.name, format='wav')
-                        with open(temp_speaker.name, 'rb') as f:
-                            speaker_waveform = f.read()
-                        
-                        speaker_clip_data = SpeakerClipCreate(
-                            audio_id=audio.id,
-                            speaker=speaker,
-                            waveform=speaker_waveform,
-                            profile_id=None
-                        )
-                        db_clip = crud_speaker_clips.create(db, obj_in=speaker_clip_data)
-                        speaker_clips[speaker] = db_clip
-                
-                if not speaker_clips:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Step 2 failed: No speaker clips created"
-                    )
-                
-                logger.info("Step 2 completed successfully")
-                
-                # Step 3: Azure Speaker Recognition
-                logger.info("Starting Step 3: Azure Speaker Recognition")
-                azure_results = {}
-
-                # Collect all existing speaker profile IDs
-                existing_profiles = crud_speaker.get_all_profiles(db)
-                profile_ids = [profile.profile_id for profile in existing_profiles]
-
-                for speaker, clip in speaker_clips.items():
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_speaker:
-                            temp_speaker.write(clip.waveform)
-                            temp_speaker.flush()
-                              # # Convert audio to WAV format with PCM codec
-                            # audio_segment = AudioSegment.from_file(io.BytesIO(clip.waveform), format="wav")
-                            # audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-                            # audio_segment.export(temp_speaker.name, format="wav", codec="pcm_s16le")
-
-                            # Identify speaker using Azure's Identify Single Speaker API
-                            logger.info(f"Identifying speaker for {speaker}")
-                            identify_url = f"https://{settings.AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/speaker-recognition/identification/text-independent/profiles:identifySingleSpeaker?api-version=2021-09-05"
-                            headers = {
-                                'Ocp-Apim-Subscription-Key': settings.AZURE_SPEECH_KEY,
-                                'Content-Type': 'audio/wav'
-                            }
-
-                            if profile_ids:
-                                params = {
-                                    'profileIds': ','.join(profile_ids)
-                                }
-
-                                with open(temp_speaker.name, 'rb') as audio_file:
-                                    response = requests.post(identify_url, headers=headers, params=params, data=audio_file)
-
-                                if response.status_code == 200:
-                                    result = response.json()
-                                    identified_profile = result.get("identifiedProfile", {})
-                                    profile_id = identified_profile.get("profileId")
-                                    score = identified_profile.get("score", 0)
-
-                                    if score >= settings.SPEAKER_IDENTIFICATION_THRESHOLD:
-                                        # Use identified profile
-                                        logger.info(f"Speaker {speaker} identified as {profile_id} with score {score}")
-                                    else:
-                                        # No match found, create new profile
-                                        profile_id = create_new_profile(headers, temp_speaker)
-                                else:
-                                    raise HTTPException(
-                                        status_code=response.status_code,
-                                        detail=f"Failed to identify speaker {speaker}: {response.text}"
-                                    )
-                            else:
-                                # No existing profiles, create new profile
-                                profile_id = create_new_profile(headers, temp_speaker)
-
-                            # Get or create speaker profile in the database
-                            db_speaker = crud_speaker.get_or_create(
-                                db,
-                                profile_id=profile_id
-                            )
-                            logger.info(f"Speaker profile created/retrieved with ID: {db_speaker.id}")
-
-                            # Update speaker clip with the speaker profile reference
-                            crud_speaker_clips.update(
-                                db,
-                                db_obj=clip,
-                                obj_in={"profile_id": profile_id}
-                            )
-                            azure_results[speaker] = profile_id
-                            logger.info(f"Updated speaker {speaker} with Azure ID: {profile_id}")
-
-                    except Exception as e:
-                        logger.error(f"Error processing speaker {speaker}: {str(e)}")
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Step 3 failed: Error processing speaker {speaker}: {str(e)}"
-                        )
-
-                if not azure_results:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Step 3 failed: No speakers were successfully processed"
-                    )
-
-                logger.info("Step 3 completed successfully")
-                
-                # Step 4: Whisper Transcription
-                logger.info("Starting Step 4: Whisper Transcription")
-                transcription_results = []
-                
-                def process_speaker_clip(clip):
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_speaker:
-                        temp_speaker.write(clip.waveform)
-                        temp_speaker.flush()
-                        
-                        with open(temp_speaker.name, "rb") as audio_file:
-                            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-                            response = client.audio.transcriptions.create(
-                                model="whisper-1",
-                                file=audio_file,
-                                response_format="verbose_json"
-                            )
-                            return clip.speaker, response
-                
+            # Step 4: Gladia Speaker Reidentification
+            logger.info("Starting Step 3: Gladia Speaker Reidentification")
+            speaker_results = {}
+            for speaker, clip in speaker_clips.items():
                 try:
-                    with ThreadPoolExecutor() as executor:
-                        transcription_results = list(executor.map(
-                            process_speaker_clip,
-                            speaker_clips.values()
-                        ))
-                    
-                    if not transcription_results:
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Step 4 failed: No transcription results generated"
-                        )
-                    
-                    logger.info("Step 4 completed successfully")
-                    
-                    # Step 5: Map Gladia and Whisper results
-                    logger.info("Starting Step 5: Mapping results")
-                    conversation_data = []
-                    logger.info(f"Transcription results: {transcription_results}")
-                    for speaker, result in transcription_results:
-                        # Get the speaker clip for this speaker to access profile_id
-                        speaker_clip = speaker_clips[speaker]
-                        profile_id = speaker_clip.profile_id or f"unknown_{speaker.split('_')[-1]}"
-                        
-                        # Log the result structure to understand what we're working with
-                        logger.info(f"Processing Whisper result for {speaker} (Azure ID: {profile_id}): {result}")
-                        
-                        # New OpenAI API returns segments directly
-                        segments = result.segments
-                        for segment in segments:
-                            conversation_data.append({
-                                'speaker': profile_id,
-                                'start': segment.start,
-                                'end': segment.end,
-                                'text': segment.text
-                            })
-                    
-                    if not conversation_data:
-                        raise HTTPException(
-                            status_code=500,
-                            detail="Step 5 failed: No conversation data generated"
-                        )
-                    
-                    # Sort by start time
-                    conversation_data.sort(key=lambda x: x['start'])
-                    
-                    # Step 6: Save conversation data
-                    logger.info("Starting Step 6: Saving conversation data")
-                    conversation_obj = ConversationCreate(
-                        audio_id=audio.id,
-                        conversation_data={
-                            'segments': conversation_data,
-                            'metadata': {
-                                'processed_at': time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime()),
-                                'total_speakers': len(speaker_clips),
-                                'total_segments': len(conversation_data)
-                            }
-                        }
-                    )
-                    db_conversation = crud_conversation.create(db, obj_in=conversation_obj)
-                    
-                    logger.info("Step 6 completed successfully")
-                    
-                    # Process conversation data with OpenAI
-                    try:
-                        processor = OpenAIProcessor()
-                        result = processor.analyze_text(str(db_conversation.conversation_data))
-                        return {
-                            "request_content": result["request_content"],
-                            "message_content": result["message_content"]
-                        }
-                    except Exception as e:
-                        logger.error(f"Error processing conversation with OpenAI: {str(e)}")
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"OpenAI processing failed: {str(e)}"
-                        )
-                
+                    result = await gladia_processor.process_speaker_reidentification(speaker, clip, db)
+                    speaker_results[speaker] = {
+                        "profile_id": result["profile_id"],
+                        "transcript": result["transcript"]
+                    }
+                    # Save speaker_results to Conversation
+                    conversation_data = {
+                        "speaker": result["profile_id"],
+                        "content": result["transcript"]
+                    }
+                    # TODO: Uncomment this when ready
+                    # await conversation_processor.create_conversation(
+                    #     audio_id=audio.id,
+                    #     conversation_data=conversation_data,
+                    #     db=db
+                    # )
                 except Exception as e:
-                    logger.error(f"Error in Whisper transcription or later steps: {str(e)}")
+                    logger.error(f"Error processing speaker {speaker}: {str(e)}")
                     raise HTTPException(
                         status_code=500,
-                        detail=f"Steps 4-6 failed: {str(e)}"
+                        detail=f"Error processing speaker {speaker}: {str(e)}"
                     )
+            logger.info("Step 3 completed successfully")
+            
+            # # Step 5: Whisper Transcription
+            # logger.info("Starting Step 5: Whisper Transcription")
+            # transcription_results = await whisper_processor.process_transcription(speaker_clips)
+            # print("transcription_results", transcription_results)
+            # logger.info("Step 5 completed successfully")
+            
+            # Step 6: Create conversation
+            # logger.info("Starting Step 6: Creating conversation")
+            # db_conversation = await conversation_processor.create_conversation(audio.id, speaker_clips, speaker_results, db)
+            # print("db_conversation", db_conversation)
+            # logger.info("Step 6 completed successfully")
+            
+            # Process conversation with OpenAI
+            try:
+                processor = OpenAIProcessor()
                 
+                # Format the conversation data
+                conversation_data = []
+                for speaker, data in speaker_results.items():
+                    conversation_data.append({
+                        "speaker": data["profile_id"],
+                        "content": data["transcript"]
+                    })
+                print("conversation_data", conversation_data)
+                result = processor.analyze_text(conversation_data)
+                return result
             except Exception as e:
-                logger.error(f"Error in speaker clips creation: {str(e)}")
+                logger.error(f"Error processing conversation with OpenAI: {str(e)}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Step 2 failed: {str(e)}"
+                    detail=f"OpenAI processing failed: {str(e)}"
                 )
-            finally:
-                # Clean up the temporary file
-                try:
-                    os.unlink(temp_audio.name)
-                except Exception as e:
-                    logger.warning(f"Failed to delete temporary file {temp_audio.name}: {str(e)}")
-                
-        except Exception as e:
-            # Clean up the temporary file in case of any error
+            
+        finally:
+            # Clean up temporary file
             try:
                 os.unlink(temp_audio.name)
-            except Exception as cleanup_error:
-                logger.warning(f"Failed to delete temporary file {temp_audio.name}: {str(cleanup_error)}")
-            raise e
-            
+            except Exception as e:
+                logger.warning(f"Failed to delete temporary file {temp_audio.name}: {str(e)}")
+    
     except Exception as e:
         logger.error(f"Error during audio processing: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=str(e)
-        )
-
-def create_new_profile(headers, temp_speaker):
-    logger.info("Creating new profile")
-    create_profile_url = f"https://{settings.AZURE_SPEECH_REGION}.api.speaker.azure.com/speaker-recognition/identification/text-independent/profiles?api-version=2021-09-05"
-    create_response = requests.post(create_profile_url, headers=headers)
-    if create_response.status_code == 201:
-        new_profile = create_response.json()
-        profile_id = new_profile.get("profileId")
-        logger.info(f"Created new profile with ID: {profile_id}")
-
-        # Enroll the speaker
-        enroll_url = f"https://{settings.AZURE_SPEECH_REGION}.api.speaker.azure.com/speaker-recognition/identification/text-independent/profiles/{profile_id}/enroll?api-version=2021-09-05"
-        with open(temp_speaker.name, 'rb') as audio_file:
-            enroll_response = requests.post(enroll_url, headers=headers, data=audio_file)
-        if enroll_response.status_code == 200:
-            logger.info("Speaker enrolled successfully")
-        return profile_id
-    else:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to create profile"
         )
 

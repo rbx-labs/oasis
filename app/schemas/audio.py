@@ -64,16 +64,17 @@ class SpeakerClip(SpeakerClipBase):
         from_attributes = True
 
 class ConversationBase(BaseModel):
-    conversation_data: Dict[str, Any]
+    audio_id: int
+    speaker: str
+    content: str
 
 class ConversationCreate(ConversationBase):
-    audio_id: int
+    pass
 
 class Conversation(ConversationBase):
     id: int
-    audio_id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

@@ -38,8 +38,8 @@ class OpenAIProcessor:
             #         ]
             #     )
             return {
-                "request_content": combined_content,
-                "message_content": response.choices[0].message.content
+                "request": combined_content,
+                "response": response.choices[0].message.content
             }
         except Exception as e:
             logger.error(f"OpenAI API error: {str(e)}")

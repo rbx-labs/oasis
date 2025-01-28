@@ -1,18 +1,24 @@
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from app.models.audio import Audio as AudioModel
+import tempfile
+from pydub import AudioSegment
+from typing import Dict, Any, List, Tuple
+from app.schemas.audio import SpeakerClipCreate
+from app.crud.crud_speaker_clips import crud_speaker_clips
+import logging
 import torch
 import torchaudio
 import numpy as np
 import io
-from typing import Tuple
-import logging
-import tempfile
-import warnings
 import soundfile as sf
-from app.core.config import settings
+import warnings
 from openai import OpenAI
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-class AudioPreprocessor:
+class AudioProcessor:
     def __init__(self):
         self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
         with warnings.catch_warnings():
@@ -28,7 +34,55 @@ class AudioPreprocessor:
         self.model.eval()
         logger.info("Model loaded successfully")
 
+    async def get_latest_audio(self, db: Session) -> AudioModel:
+        """Get the latest audio file from database"""
+        audio = db.query(AudioModel).order_by(AudioModel.created_at.desc()).first()
+        if not audio:
+            raise HTTPException(
+                status_code=404,
+                detail="No audio files found"
+            )
+        return audio
+
+    async def create_speaker_clips(self, audio_data: AudioSegment, segments: List[Any], audio_id: int, db: Session) -> Dict[str, Any]:
+        """Create speaker clips from segments"""
+        speaker_clips = {}
+        
+        for speaker in set(segment.speaker for segment in segments):
+            speaker_segments = [s for s in segments if s.speaker == speaker]
+            combined_audio = AudioSegment.empty()
+            
+            for segment in speaker_segments:
+                start_ms = int(segment.start_time * 1000)
+                end_ms = int(segment.end_time * 1000)
+                segment_audio = audio_data[start_ms:end_ms]
+                combined_audio += segment_audio
+            
+            # Export combined audio for the speaker
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_speaker:
+                combined_audio.export(temp_speaker.name, format='wav')
+                with open(temp_speaker.name, 'rb') as f:
+                    speaker_waveform = f.read()
+                
+                speaker_clip_data = SpeakerClipCreate(
+                    audio_id=audio_id,
+                    speaker=speaker,
+                    waveform=speaker_waveform,
+                    profile_id=None
+                )
+                db_clip = crud_speaker_clips.create(db, obj_in=speaker_clip_data)
+                speaker_clips[speaker] = db_clip
+        
+        if not speaker_clips:
+            raise HTTPException(
+                status_code=500,
+                detail="No speaker clips created"
+            )
+        
+        return speaker_clips
+
     def process_audio(self, audio_bytes: bytes) -> Tuple[bytes, float]:
+        """Process audio data using Silero VAD"""
         logger.debug(f"Processing audio data of size: {len(audio_bytes)} bytes")
         # Convert bytes to tensor
         audio_tensor, sample_rate = self._load_audio(audio_bytes)
@@ -92,6 +146,7 @@ class AudioPreprocessor:
         return processed_bytes, speech_ratio
 
     def _load_audio(self, audio_bytes: bytes) -> Tuple[torch.Tensor, int]:
+        """Load audio from bytes into tensor"""
         try:
             # Save bytes to temporary file
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_file:
@@ -131,4 +186,4 @@ class AudioPreprocessor:
                 return transcript
         except Exception as e:
             logger.error(f"Whisper transcription error: {str(e)}")
-            raise
+            raise 

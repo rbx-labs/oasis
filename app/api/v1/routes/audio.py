@@ -8,6 +8,8 @@ from app.schemas.audio import (
     SpeakerClip, SpeakerClipCreate, Conversation, ConversationCreate,
     GladiaResponseCreate
 )
+from app.schemas.vad_segment import VadSegmentCreate
+from app.crud.crud_vad_segment import crud_vad_segments
 from app.crud.crud_audio import crud_audio
 from app.crud.crud_transcription import crud_transcription
 from app.crud.crud_diarization import crud_diarization
@@ -82,7 +84,7 @@ async def upload_audio(
     
     # Process audio with Silero VAD
     try:
-        processed_audio, speech_ratio = audio_processor.process_audio(contents)
+        segments, speech_ratio = audio_processor.process_audio(contents)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
         
         if speech_ratio < 0.01:  # Less than 1% speech
@@ -99,7 +101,7 @@ async def upload_audio(
     
     audio_in = AudioCreate(
         filename=file.filename,
-        waveform=processed_audio
+        waveform=contents  # Store original audio
     )
     
     existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
@@ -110,6 +112,17 @@ async def upload_audio(
         )
     
     audio = crud_audio.create(db, obj_in=audio_in)
+    
+    # Create VAD segments
+    for segment in segments:
+        vad_segment = VadSegmentCreate(
+            audio_id=audio.id,
+            start_time=segment['start_time'],
+            end_time=segment['end_time'],
+            segment_waveform=segment['waveform']
+        )
+        crud_vad_segments.create(db, obj_in=vad_segment)
+    
     return audio
 
 @router.get("/latest", response_model=Audio)

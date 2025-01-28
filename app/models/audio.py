@@ -17,3 +17,4 @@ class Audio(Base):
     speaker_clips = relationship("SpeakerClip", back_populates="audio")
     conversations = relationship("Conversation", back_populates="audio")
     gladia_responses = relationship("GladiaResponse", back_populates="audio")
+    vad_segments = relationship("VadSegment", back_populates="audio", cascade="all, delete-orphan")

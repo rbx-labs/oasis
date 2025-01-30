@@ -7,6 +7,7 @@ from app.api.v1.routes.cron import initialize_default_schedules
 import logging
 import requests
 import time
+from typing import Dict, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,22 +36,39 @@ app.add_event_handler("shutdown", create_stop_app_handler())
 # Register API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-def get_ngrok_url(retries=5, delay=2):
+def get_ngrok_urls(retries=5, delay=2) -> Dict[str, Optional[str]]:
+    urls = {
+        "backend": None,
+        "frontend": None
+    }
+    
     if settings.NGROK_AUTHTOKEN is None:
         print("NGROK_AUTHTOKEN is not set. Skipping Ngrok URL fetch.")
-        return None
+        return urls
 
     for _ in range(retries):
         try:
             response = requests.get("http://ngrok:4040/api/tunnels")
             tunnels = response.json().get("tunnels", [])
+            
+            # Get the URL from the single tunnel
             for tunnel in tunnels:
                 if tunnel.get("proto") == "https":
-                    return tunnel.get("public_url")
+                    base_url = tunnel.get("public_url")
+                    if base_url:
+                        # Use the same base URL for both services, just add the path
+                        urls["backend"] = f"{base_url}/api"
+                        urls["frontend"] = base_url
+                        break
+
+            if urls["backend"] and urls["frontend"]:
+                break
+
         except requests.RequestException as e:
             print(f"Error fetching Ngrok URL: {e}")
         time.sleep(delay)
-    return None
+
+    return urls
 
 @app.on_event("startup")
 async def startup_event():
@@ -61,18 +79,27 @@ async def startup_event():
     else:
         logger.error("Failed to initialize default schedules")
 
-    ngrok_url = get_ngrok_url()
-    if ngrok_url:
-        print(f"Ngrok URL: {ngrok_url}")
-        print(f"Swagger UI:: {ngrok_url}/docs")
-        print(f"ReDoc: {ngrok_url}/redoc")
-        app.description = f"{settings.DESCRIPTION}\n\nNgrok URL:\n\n{ngrok_url}"
+    ngrok_urls = get_ngrok_urls()
+    
+    if ngrok_urls["backend"] or ngrok_urls["frontend"]:
+        description_lines = [settings.DESCRIPTION, "\nNgrok URLs:\n"]
+        
+        if ngrok_urls["backend"]:
+            print(f"Backend URL: {ngrok_urls['backend']}")
+            print(f"Swagger UI: {ngrok_urls['backend']}/docs")
+            print(f"ReDoc: {ngrok_urls['backend']}/redoc")
+            description_lines.append(f"Backend: {ngrok_urls['backend']}")
+            
+        if ngrok_urls["frontend"]:
+            print(f"Frontend URL: {ngrok_urls['frontend']}")
+            description_lines.append(f"Frontend: {ngrok_urls['frontend']}")
+            
+        app.description = "\n".join(description_lines)
     else:
         print(f"base url: {settings.API_BASE_URL}")
-        print(f"Swagger UI:: {settings.API_BASE_URL}/docs")
+        print(f"Swagger UI: {settings.API_BASE_URL}/docs")
         print(f"ReDoc: {settings.API_BASE_URL}/redoc")
-
-        print("Failed to fetch Ngrok URL after retries or NGROK_AUTHTOKEN is not set.")
+        print("Failed to fetch Ngrok URLs after retries or NGROK_AUTHTOKEN is not set.")
 
 @app.on_event("shutdown")
 async def shutdown_event():

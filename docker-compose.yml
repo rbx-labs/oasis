@@ -17,15 +17,57 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    networks:
+      - oasis_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: oasis_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=/api
+    depends_on:
+      - fastapi
+    networks:
+      - oasis_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: oasis_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - fastapi
+      - frontend
+    networks:
+      - oasis_network
 
   ngrok:
-    image: wernight/ngrok
+    image: ngrok/ngrok:latest
     container_name: oasis_ngrok
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
     ports:
       - "4040:4040"
+    command: start --all --config=/etc/ngrok.yml
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
-    command: ngrok http fastapi:8000
     env_file:
       - .env
-    entrypoint: /bin/sh -c "if [ -z \"$NGROK_AUTHTOKEN\" ]; then echo 'NGROK_AUTHTOKEN is not set, skipping ngrok'; else ngrok http fastapi:8000; fi"
+    depends_on:
+      - nginx
+    networks:
+      - oasis_network
+
+networks:
+  oasis_network:
+    driver: bridge

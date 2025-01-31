@@ -1,5 +1,4 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+FROM python:3.9-slim
 
 # Install system dependencies including FFmpeg
 RUN apt-get update && apt-get install -y \
@@ -41,4 +40,4 @@ RUN adduser --disabled-password --gecos '' appuser && \
 USER appuser
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]

@@ -37,6 +37,7 @@ services:
         - OPENAI_API_KEY=${OPENAI_API_KEY}
     container_name: oasis_frontend
     volumes:
+      - ./data:/app/data
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
@@ -86,6 +87,19 @@ services:
     container_name: oasis_llm
     ports:
       - "8001:11434"
+    networks:
+      - oasis_network
+
+  wallet:
+    build:
+      context: ./wallet
+      dockerfile: Dockerfile
+    container_name: oasis_wallet
+    volumes:
+      - .:/wallet
+      - ./data:/data
+    ports:
+      - "8002:8002"
     networks:
       - oasis_network
 

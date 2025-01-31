@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Oasis"
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "Oasis API Server"
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/v1"
     
     # API Base URL
     API_BASE_URL: str = "http://localhost:8000"

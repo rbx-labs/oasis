@@ -79,6 +79,16 @@ services:
     networks:
       - oasis_network
 
+  llm:
+    build:
+      context: ./llm
+      dockerfile: Dockerfile
+    container_name: oasis_llm
+    ports:
+      - "8001:11434"
+    networks:
+      - oasis_network
+
 networks:
   oasis_network:
     driver: bridge

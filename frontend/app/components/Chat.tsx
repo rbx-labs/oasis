@@ -30,30 +30,52 @@ export default function Chat() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    console.log(message);
-    // Add user message to chat
+
     const newMessage = { role: "user", content: message };
     setChatHistory((prev) => [...prev, newMessage]);
     setIsLoading(true);
     setMessage("");
 
     try {
-      const response = await fetch("/internal/api/chat", {
+      const response = await fetch("/llm/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [...chatHistory, newMessage],
-          systemPrompt: "너는 집사입니다",
+          model: "qwen2.5",
+          messages: [
+            { role: "system", content: "너는 집사입니다" },
+            ...chatHistory,
+            newMessage,
+          ],
+          stream: true,
         }),
       });
 
-      const data = await response.json();
-      setChatHistory((prev) => [
-        ...prev,
-        { role: "assistant", content: data.response },
-      ]);
+      const reader = response.body?.getReader();
+      let partialMessage = "";
+
+      if (reader) {
+        setChatHistory((prev) => [...prev, { role: "assistant", content: "" }]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const body = JSON.parse(new TextDecoder().decode(value));
+          partialMessage += body.message.content;
+
+          setChatHistory((prev) => {
+            const newHistory = [...prev];
+            newHistory[newHistory.length - 1] = {
+              role: "assistant",
+              content: partialMessage,
+            };
+            return newHistory;
+          });
+        }
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {

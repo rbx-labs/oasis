@@ -1,9 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import React from "react";
 
 export const metadata: Metadata = {
-  title: "Oasis Audio Processing",
-  description: "Audio processing and transcription platform",
+  title: "My home",
+  description: "My home",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning className="bg-gray-100">
+        <div className="container mx-auto">{children}</div>
+      </body>
     </html>
   );
 }

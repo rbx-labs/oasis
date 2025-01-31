@@ -3,4 +3,5 @@ tunnels:
   app:
     proto: http
     addr: nginx:80
+    hostname: gobi.ngrok.app
     inspect: false

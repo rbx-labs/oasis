@@ -13,6 +13,9 @@ RUN yarn install
 # Copy the rest of the application
 COPY . .
 
+ARG OPENAI_API_KEY
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+
 # Build the application
 RUN yarn build
 
@@ -20,4 +23,4 @@ RUN yarn build
 EXPOSE 3000
 
 # Start the application
-CMD ["yarn", "start"] 
+CMD ["yarn", "dev"] 

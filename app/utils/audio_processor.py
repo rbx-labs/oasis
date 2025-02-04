@@ -120,9 +120,11 @@ class AudioProcessor:
             segment = audio_tensor[:, start_sample:end_sample]
             speech_segments.append(segment)
 
+        total_duration = len(audio_tensor[0]) / sample_rate
+
         if not speech_segments:
             logger.warning("No speech segments detected, returning original audio")
-            return audio_bytes, 0.0
+            return audio_bytes, 0.0, total_duration, 0.0
 
         # Concatenate speech segments
         processed_audio = torch.cat(speech_segments, dim=1)
@@ -138,7 +140,6 @@ class AudioProcessor:
         processed_bytes = buffer.getvalue()
 
         # Calculate speech ratio
-        total_duration = len(audio_tensor[0]) / sample_rate
         speech_duration = len(processed_audio[0]) / sample_rate
         speech_ratio = speech_duration / total_duration
         logger.info(f"Total duration: {total_duration:.2f}s, Speech duration: {speech_duration:.2f}s, Ratio: {speech_ratio:.2%}")

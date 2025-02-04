@@ -143,7 +143,7 @@ class AudioProcessor:
         speech_ratio = speech_duration / total_duration
         logger.info(f"Total duration: {total_duration:.2f}s, Speech duration: {speech_duration:.2f}s, Ratio: {speech_ratio:.2%}")
 
-        return processed_bytes, speech_ratio
+        return processed_bytes, speech_ratio, total_duration, speech_duration
 
     def _load_audio(self, audio_bytes: bytes) -> Tuple[torch.Tensor, int]:
         """Load audio from bytes into tensor"""

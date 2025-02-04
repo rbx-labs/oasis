@@ -16,6 +16,8 @@ class AudioBase(BaseModel):
 
 class AudioCreate(AudioBase):
     waveform: bytes
+    speech_duration: float
+    total_duration: float
 
     class Config:
         arbitrary_types_allowed = True

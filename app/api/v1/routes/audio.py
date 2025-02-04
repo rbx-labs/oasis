@@ -76,20 +76,21 @@ async def upload_audio(
     """
     Upload audio file and process waveform using Silero VAD
     """
+    existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
+    if existing_audio:
+        raise HTTPException(
+            status_code=400,
+            detail="An audio file with this name already exists"
+        )
+    
     logger.info(f"Uploading file: {file.filename}, size: {len(await file.read())} bytes")
     await file.seek(0)  # Reset file pointer after reading
     contents = await file.read()
     
     # Process audio with Silero VAD
     try:
-        processed_audio, speech_ratio = audio_processor.process_audio(contents)
+        processed_audio, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(contents)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
-        
-        if speech_ratio < 0.01:  # Less than 1% speech
-            raise HTTPException(
-                status_code=400,
-                detail="No significant speech detected in the audio file"
-            )
     except Exception as e:
         logger.error(f"Error processing audio: {str(e)}")
         raise HTTPException(
@@ -99,15 +100,10 @@ async def upload_audio(
     
     audio_in = AudioCreate(
         filename=file.filename,
-        waveform=processed_audio
+        waveform=processed_audio,
+        total_duration=total_duration,
+        speech_duration=speech_duration
     )
-    
-    existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
-    if existing_audio:
-        raise HTTPException(
-            status_code=400,
-            detail="An audio file with this name already exists"
-        )
     
     audio = crud_audio.create(db, obj_in=audio_in)
     return audio

@@ -219,7 +219,7 @@ class GladiaProcessor:
                     
                     # Get UUID from speaker_reidentification results
                     speaker_results = speaker_info.get("results", {})
-                    speakers = list(speaker_results.values())
+                    speakers = speaker_results if isinstance(speaker_results, list) else list(speaker_results.values())
                     for speaker in speakers:
                         profile_id = speaker[0].get("uuid")
                     

@@ -106,7 +106,6 @@ class AudioProcessor:
         logger.debug(f"Found {len(speech_timestamps)} speech segments")
 
         # Extract speech segments
-        buffer = io.BytesIO()
         speech_segments = []
         speech_duration = 0
         for i, ts in enumerate(speech_timestamps):
@@ -118,6 +117,7 @@ class AudioProcessor:
             duration = (end_sample - start_sample) / sample_rate
             pad_size = int(sample_rate * 0.1)  # 0.1초의 패딩
             audio = torch.nn.functional.pad(audio, (pad_size, pad_size))
+            buffer = io.BytesIO()
             torchaudio.save(buffer, audio, sample_rate, format="wav")
             speech_segments.append({
                 "segment_id": i,

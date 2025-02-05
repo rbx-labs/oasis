@@ -13,6 +13,7 @@ from datetime import datetime
 from app.models.audio import Audio as AudioModel
 from app.models.voice_segment import VoiceSegment
 from app.models.gladia_response import GladiaResponse
+from app.models.speaker import Speaker
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -100,19 +101,51 @@ async def analyze_latest_transcription(
             detail="No voice segments found for the latest audio"
         )
 
-    # Format the conversation text
+    # Collect all unique speaker UUIDs from the transcription
+    speaker_uuids = set()
+    for segment, gladia_response in voice_segments:
+        response_data = gladia_response.response_data
+        if (response_data and 
+            "result" in response_data and 
+            "speaker_reidentification" in response_data["result"] and 
+            "results" in response_data["result"]["speaker_reidentification"]):
+            speaker_results = response_data["result"]["speaker_reidentification"]["results"]
+            for speaker_id, reident_results in speaker_results.items():
+                if reident_results and len(reident_results) > 0:
+                    speaker_uuid = reident_results[0].get("uuid")
+                    if speaker_uuid:
+                        speaker_uuids.add(speaker_uuid)
+
+    # Query speakers from the database
+    speakers_map = {}
+    db_speakers = db.query(Speaker).filter(Speaker.profile_id.in_(speaker_uuids)).all()
+    for speaker in db_speakers:
+        speakers_map[speaker.profile_id] = speaker.speaker_label
+
+    # Format the conversation text with speaker labels
     formatted_text = []
     for segment, gladia_response in voice_segments:
-        # Extract speaker and text from response_data
         response_data = gladia_response.response_data
         if response_data and "result" in response_data:
             utterances = response_data["result"]["transcription"]["utterances"]
+            speaker_results = response_data["result"]["speaker_reidentification"]["results"]
+            
             for utterance in utterances:
-                speaker_id = utterance.get("speaker")
+                speaker_id = str(utterance.get("speaker"))
                 text = utterance.get("text", "")
                 start = utterance.get("start", 0)
                 timestamp = datetime.fromtimestamp(segment.start_time / 1000 + start).strftime("%-m/%-d %-I:%M:%S%p")
-                formatted_text.append(f"{timestamp} [Speaker_{speaker_id}]: {text}")
+                
+                # Get UUID from speaker reidentification results
+                speaker_uuid = None
+                if speaker_id in speaker_results and speaker_results[speaker_id]:
+                    speaker_uuid = speaker_results[speaker_id][0].get("uuid")
+                
+                if speaker_uuid and speaker_uuid in speakers_map:
+                    # Use speaker label from map, fallback to Speaker_X if not found
+                    speaker_label = speakers_map.get(speaker_uuid)
+                    formatted_text.append(f"{timestamp} [{speaker_label}]: {text}")
+    
     formatted_text = "\n".join(formatted_text)
     
     try:

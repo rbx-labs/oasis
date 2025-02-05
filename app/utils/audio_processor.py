@@ -88,6 +88,7 @@ class AudioProcessor:
         audio_tensor, sample_rate = self._load_audio(audio_bytes)
         # Normalize audio signal
         audio_tensor = audio_tensor / torch.max(torch.abs(audio_tensor))
+        total_duration = len(audio_tensor[0]) / sample_rate
         logger.debug(f"Loaded audio tensor with shape: {audio_tensor.shape}, sample rate: {sample_rate}")
         
         # Get speech timestamps using the utility function
@@ -103,48 +104,37 @@ class AudioProcessor:
         )
 
         logger.debug(f"Found {len(speech_timestamps)} speech segments")
-        if speech_timestamps:
-            logger.debug(f"First segment: {speech_timestamps[0]}")
-            logger.debug(f"Last segment: {speech_timestamps[-1]}")
-            # 각 세그먼트의 길이 정보 출력
-            for i, ts in enumerate(speech_timestamps):
-                duration = (ts['end'] - ts['start']) / sample_rate
-                logger.debug(f"Segment {i}: {duration:.2f}s")
 
         # Extract speech segments
+        buffer = io.BytesIO()
         speech_segments = []
-        for ts in speech_timestamps:
+        speech_duration = 0
+        for i, ts in enumerate(speech_timestamps):
             start_sample = ts['start']
             end_sample = ts['end']
             logger.debug(f"Processing segment: {start_sample} to {end_sample} ({(end_sample-start_sample)/sample_rate:.2f}s)")
-            segment = audio_tensor[:, start_sample:end_sample]
-            speech_segments.append(segment)
 
-        total_duration = len(audio_tensor[0]) / sample_rate
-
+            audio = audio_tensor[:, start_sample:end_sample]
+            duration = (end_sample - start_sample) / sample_rate
+            pad_size = int(sample_rate * 0.1)  # 0.1초의 패딩
+            audio = torch.nn.functional.pad(audio, (pad_size, pad_size))
+            torchaudio.save(buffer, audio, sample_rate, format="wav")
+            speech_segments.append({
+                "segment_id": i,
+                "buffer": buffer.getvalue(),
+                "start_ts": int(ts['start'] / sample_rate * 1000),
+                "end_ts": int(ts['end'] / sample_rate * 1000),
+            })
+            speech_duration += duration
+            
         if not speech_segments:
             logger.warning("No speech segments detected, returning original audio")
-            return audio_bytes, 0.0, total_duration, 0.0
-
-        # Concatenate speech segments
-        processed_audio = torch.cat(speech_segments, dim=1)
+            return [], 0.0, total_duration, 0.0
         
-        # Add small padding to avoid clipping
-        if len(processed_audio[0]) > 0:
-            pad_size = int(sample_rate * 0.1)  # 0.1초의 패딩
-            processed_audio = torch.nn.functional.pad(processed_audio, (pad_size, pad_size))
-        
-        # Convert back to bytes
-        buffer = io.BytesIO()
-        torchaudio.save(buffer, processed_audio, sample_rate, format="wav")
-        processed_bytes = buffer.getvalue()
-
-        # Calculate speech ratio
-        speech_duration = len(processed_audio[0]) / sample_rate
         speech_ratio = speech_duration / total_duration
         logger.info(f"Total duration: {total_duration:.2f}s, Speech duration: {speech_duration:.2f}s, Ratio: {speech_ratio:.2%}")
 
-        return processed_bytes, speech_ratio, total_duration, speech_duration
+        return speech_segments, speech_ratio, total_duration, speech_duration
 
     def _load_audio(self, audio_bytes: bytes) -> Tuple[torch.Tensor, int]:
         """Load audio from bytes into tensor"""

@@ -16,6 +16,7 @@ class AudioBase(BaseModel):
 
 class AudioCreate(AudioBase):
     waveform: bytes
+    start_timestamp: int
     speech_duration: float
     total_duration: float
 

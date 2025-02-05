@@ -5,7 +5,7 @@ class AnalysisRequest(BaseModel):
     pass
 
 class Analysis(BaseModel):
-    transcription_id: int
+    audio_id: int
     text: str
     analysis: str
     created_at: datetime

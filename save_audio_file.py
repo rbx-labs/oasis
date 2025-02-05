@@ -1,15 +1,15 @@
 import sqlite3
 import argparse
 
-def save_blob_to_file(database_path, table_name, blob_column, output_file, filename):
+def save_blob_to_file(database_path, table_name, blob_column, output_file, id):
     try:
         # Connect to the SQLite database
         conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
 
         # Query to fetch the BLOB data
-        query = f"SELECT {blob_column} FROM {table_name} WHERE filename = ?"
-        cursor.execute(query, (filename,))
+        query = f"SELECT {blob_column} FROM {table_name} WHERE id = ?"
+        cursor.execute(query, (id,))
 
         # Fetch the result
         result = cursor.fetchone()
@@ -22,7 +22,7 @@ def save_blob_to_file(database_path, table_name, blob_column, output_file, filen
             
             print(f"BLOB data saved to {output_file}")
         else:
-            print(f"No data found for the filename: {filename}")
+            print(f"No data found for the filename: {id}")
     
     except sqlite3.Error as e:
         print(f"Error: {e}")
@@ -35,7 +35,7 @@ def save_blob_to_file(database_path, table_name, blob_column, output_file, filen
 if __name__ == "__main__":
     # Create argument parser
     parser = argparse.ArgumentParser(description="Save a BLOB from SQLite to a file.")
-    parser.add_argument("--filename", required=True, help="The filename to query in the database.")
+    parser.add_argument("--id", required=True, help="The id to query in the database.")
     
     # Parse arguments
     args = parser.parse_args()
@@ -44,10 +44,10 @@ if __name__ == "__main__":
     database_path = "./data/sql_app.db"
 
     # Table containing the BLOB
-    table_name = "audios"
+    table_name = "voice_segments"
 
     # Column with the BLOB data
     blob_column = "waveform"
 
     # Call the function with the command-line argument
-    save_blob_to_file(database_path, table_name, blob_column, "./data/" + args.filename, args.filename)
+    save_blob_to_file(database_path, table_name, blob_column, "./data/" + args.id + '.wav', args.id)

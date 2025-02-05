@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Tuple
@@ -8,7 +8,9 @@ from app.schemas.audio import (
     SpeakerClip, SpeakerClipCreate, Conversation, ConversationCreate,
     GladiaResponseCreate
 )
+from app.schemas.voice_segment import VoiceSegmentCreate
 from app.crud.crud_audio import crud_audio
+from app.crud.crud_voice_segment import crud_voice_segment
 from app.crud.crud_transcription import crud_transcription
 from app.crud.crud_diarization import crud_diarization
 from app.crud.crud_speaker_clips import crud_speaker_clips
@@ -72,24 +74,26 @@ async def upload_audio(
     _api_key: str = Depends(get_api_key),
     db: Session = Depends(deps.get_db),
     file: UploadFile = File(...),
+    timestamp: int = Form(...)
 ):
     """
     Upload audio file and process waveform using Silero VAD
+    
+    Parameters:
+    - file: Audio file to upload
+    - timestamp: Unix timestamp for the audio file
     """
     existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
     if existing_audio:
-        raise HTTPException(
-            status_code=400,
-            detail="An audio file with this name already exists"
-        )
-    
-    logger.info(f"Uploading file: {file.filename}, size: {len(await file.read())} bytes")
+        crud_audio.remove(db, id=existing_audio.id)
+        
     await file.seek(0)  # Reset file pointer after reading
     contents = await file.read()
+    logger.info(f"Uploading file: {file.filename}, timestamp: {timestamp}, size: {len(await file.read())} bytes")
     
     # Process audio with Silero VAD
     try:
-        processed_audio, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(contents)
+        segments, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(contents)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
     except Exception as e:
         logger.error(f"Error processing audio: {str(e)}")
@@ -100,12 +104,25 @@ async def upload_audio(
     
     audio_in = AudioCreate(
         filename=file.filename,
-        waveform=processed_audio,
+        waveform=contents,
         total_duration=total_duration,
         speech_duration=speech_duration
     )
-    
+
     audio = crud_audio.create(db, obj_in=audio_in)
+
+    for segment in segments:
+        print("Segment", segment['start_ts'], segment['end_ts'])
+        voice_segment_in = VoiceSegmentCreate(
+            audio_id=audio.id,
+            segment_id=segment["segment_id"],
+            waveform=segment["buffer"],
+            start_time=segment["start_ts"] + timestamp,
+            end_time=segment["end_ts"] + timestamp,
+            duration=(segment["end_ts"] - segment["start_ts"]) / 1000
+        )
+        crud_voice_segment.create(db, obj_in=voice_segment_in)
+        
     return audio
 
 @router.get("/latest", response_model=Audio)

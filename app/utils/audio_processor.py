@@ -146,12 +146,14 @@ class AudioProcessor:
                 
                 # Load audio using soundfile
                 data, sample_rate = sf.read(temp_file.name)
-                # Convert to torch tensor and reshape for model
+                # Convert to torch tensor
                 waveform = torch.FloatTensor(data)
                 if len(waveform.shape) == 1:
+                    # If mono, reshape to [1, samples]
                     waveform = waveform.unsqueeze(0)
                 else:
-                    waveform = waveform.mean(dim=1, keepdim=True)  # Convert stereo to mono
+                    # If stereo, convert to mono and reshape to [1, samples]
+                    waveform = waveform.mean(dim=1).unsqueeze(0)
                 logger.debug(f"Successfully loaded audio file with sample rate: {sample_rate}")
                 return waveform, sample_rate
         except Exception as e:

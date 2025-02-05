@@ -19,5 +19,4 @@ class Audio(Base):
     diarization_segments = relationship("DiarizationSegment", back_populates="audio")
     speaker_clips = relationship("SpeakerClip", back_populates="audio")
     conversations = relationship("Conversation", back_populates="audio")
-    gladia_responses = relationship("GladiaResponse", back_populates="audio")
     voice_segments = relationship("VoiceSegment", back_populates="audio", cascade="all, delete")

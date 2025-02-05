@@ -5,8 +5,7 @@ from typing import List, Dict, Any, Tuple
 from app.api import deps
 from app.schemas.audio import (
     Audio, AudioCreate, DiarizationSegment, DiarizationSegmentCreate,
-    SpeakerClip, SpeakerClipCreate, Conversation, ConversationCreate,
-    GladiaResponseCreate
+    SpeakerClip, SpeakerClipCreate, Conversation, ConversationCreate
 )
 from app.schemas.voice_segment import VoiceSegmentCreate
 from app.crud.crud_audio import crud_audio
@@ -121,8 +120,10 @@ async def upload_audio(
             end_time=segment["end_ts"] + start_timestamp,
             duration=(segment["end_ts"] - segment["start_ts"]) / 1000
         )
-        crud_voice_segment.create(db, obj_in=voice_segment_in)
-        
+        voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
+
+        await gladia_processor.transcribe(voice_segment, db)
+
     return audio
 
 @router.get("/latest", response_model=Audio)

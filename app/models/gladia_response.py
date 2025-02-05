@@ -7,9 +7,9 @@ class GladiaResponse(Base):
     __tablename__ = "gladia_responses"
 
     id = Column(Integer, primary_key=True, index=True)
-    audio_id = Column(Integer, ForeignKey("audios.id"))
+    voice_segment_id = Column(Integer, ForeignKey("voice_segments.id"), nullable=False)
     response_data = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    audio = relationship("Audio", back_populates="gladia_responses") 
+    voice_segment = relationship("VoiceSegment", back_populates="gladia_response") 

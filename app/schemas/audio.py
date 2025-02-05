@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 # Base Transcription schema without audio reference
@@ -76,20 +76,6 @@ class ConversationCreate(ConversationBase):
 
 class Conversation(ConversationBase):
     id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class GladiaResponseBase(BaseModel):
-    response_data: Dict[str, Any]
-
-class GladiaResponseCreate(GladiaResponseBase):
-    audio_id: int
-
-class GladiaResponse(GladiaResponseBase):
-    id: int
-    audio_id: int
     created_at: datetime
 
     class Config:

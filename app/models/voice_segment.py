@@ -16,3 +16,4 @@ class VoiceSegment(Base):
 
     # Relationships
     audio = relationship("Audio", back_populates="voice_segments")
+    gladia_response = relationship("GladiaResponse", back_populates="voice_segment", cascade="all, delete")

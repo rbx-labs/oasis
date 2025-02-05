@@ -229,6 +229,7 @@ class GladiaProcessor:
                             profile_id=profile_id
                         )
                         logger.info(f"Speaker profile created/retrieved with ID: {db_speaker.profile_id}")
+                    break
                 elif status == "error":
                     raise HTTPException(
                         status_code=500,

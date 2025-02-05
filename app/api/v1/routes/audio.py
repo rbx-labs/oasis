@@ -111,6 +111,7 @@ async def upload_audio(
 
     audio = crud_audio.create(db, obj_in=audio_in)
 
+    voice_segments = []
     for segment in segments:
         voice_segment_in = VoiceSegmentCreate(
             audio_id=audio.id,
@@ -121,7 +122,9 @@ async def upload_audio(
             duration=(segment["end_ts"] - segment["start_ts"]) / 1000
         )
         voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
-
+        voice_segments.append(voice_segment)
+    
+    for voice_segment in voice_segments:
         await gladia_processor.transcribe(voice_segment, db)
 
     return audio

@@ -2,7 +2,6 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
-from app.schemas.analysis import Analysis
 from app.core.security import get_api_key
 from app.utils.openai_processor import OpenAIProcessor
 import logging
@@ -18,7 +17,7 @@ openai_processor = OpenAIProcessor()
 
 router = APIRouter()
 
-@router.get("/latest/analyze", response_model=Analysis)
+@router.get("/latest/analyze")
 async def analyze_latest_transcription(
     _api_key: str = Depends(get_api_key),
     db: Session = Depends(deps.get_db)

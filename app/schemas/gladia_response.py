@@ -8,6 +8,9 @@ class GladiaResponseBase(BaseModel):
 class GladiaResponseCreate(GladiaResponseBase):
     voice_segment_id: int
 
+class GladiaResponseUpdate(GladiaResponseBase):
+    pass
+
 class GladiaResponse(GladiaResponseBase):
     id: int
     voice_segment_id: int

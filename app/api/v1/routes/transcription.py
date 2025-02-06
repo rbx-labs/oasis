@@ -163,25 +163,11 @@ async def analyze_latest_transcription(
     
     for speaker_uuid, speaker_label in speakers_map.items():
         try:
-            context = speaker_contexts.get(speaker_uuid, None)
-            context_section = f"""
----
-Previous context:
-{context}
----""" if context else ""
-            
-            prompt = f"""Given the full conversation below{' and the previous context' if context else ''} about {speaker_label}, return your analysis as a JSON object with the following structure:
-{{
-    "speaker_label": first and last name extracted from the conversation (if no information available, use null),
-    "context": {'updated context from the conversation and previous context' if context else 'context extracted from the conversation'}
-}}
-{context_section}
---- 
-Full conversation:
-{formatted_text}
----"""
-            
-            analysis = openai_processor.analyze_text(prompt)
+            analysis = openai_processor.speaker_analysis(
+                speaker_label=speaker_label,
+                conversation=formatted_text,
+                previous_context=speaker_contexts.get(speaker_uuid, None)
+            )
             analysis_data = json.loads(analysis["response"])
             speaker = db.query(Speaker).filter(Speaker.profile_id == speaker_uuid).first()
             if speaker:

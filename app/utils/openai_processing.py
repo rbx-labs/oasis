@@ -8,6 +8,40 @@ class OpenAIProcessor:
     def __init__(self):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
+    def speaker_analysis(self, speaker_label: str, conversation: str, previous_context: str) -> dict:
+        context_section = f"""
+---
+Previous context:
+{previous_context}
+---""" if previous_context else ""
+            
+        prompt = f"""Given the full conversation below{' and the previous context' if previous_context else ''} about {speaker_label}, return your analysis as a JSON object with the following structure:
+{{
+    "speaker_label": first and last name extracted from the conversation (if no information available, use null),
+    "context": {'updated context from the conversation and previous context' if previous_context else 'context extracted from the conversation'}
+}}
+{context_section}
+--- 
+Full conversation:
+{conversation}
+---"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            return {
+                "request": prompt,
+                "response": response.choices[0].message.content
+            }
+        except Exception as e:
+            logger.error(f"OpenAI API error: {str(e)}")
+            raise 
+
+
     def analyze_text(self, text: str) -> dict:
         prompt = """
         당신은 대화 내용을 분석하고 적절한 액션을 취하는 전문가입니다.

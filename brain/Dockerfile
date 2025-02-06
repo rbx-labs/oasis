@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Set working directory
-WORKDIR /wallet
+WORKDIR /brain
 
 # Install Python dependencies
 COPY requirements.txt .

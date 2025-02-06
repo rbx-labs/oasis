@@ -36,7 +36,6 @@ ENV/
 
 # Database
 *.db
-*.sqlite3
 sql_app.db
 
 # Logs
@@ -54,4 +53,4 @@ data/
 # Node dependencies
 node_modules/
 **/node_modules/
-frontend/.next/**
+**/.next/**

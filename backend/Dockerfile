@@ -2,7 +2,12 @@
 FROM python:3.11-slim
 
 # Set working directory
-WORKDIR /wallet
+WORKDIR /backend
+
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libgomp1
 
 # Install Python dependencies
 COPY requirements.txt .

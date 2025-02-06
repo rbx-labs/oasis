@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -118,9 +119,11 @@ async def analyze_latest_transcription(
 
     # Query speakers from the database
     speakers_map = {}
+    speaker_contexts = {}
     db_speakers = db.query(Speaker).filter(Speaker.profile_id.in_(speaker_uuids)).all()
     for speaker in db_speakers:
         speakers_map[speaker.profile_id] = speaker.speaker_label
+        speaker_contexts[speaker.profile_id] = speaker.context
 
     # Format the conversation text with speaker labels
     formatted_text = []
@@ -151,16 +154,48 @@ async def analyze_latest_transcription(
     try:
         analysis = openai_processor.analyze_text(formatted_text)
         logger.info(f"Generated analysis for audio {latest_audio.id}")
-        
-        return {
-            "audio_id": latest_audio.id,
-            "text": formatted_text,
-            "analysis": analysis["response"],
-            "created_at": datetime.utcnow()
-        }
     except Exception as e:
         logger.error(f"Analysis failed: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to analyze conversation"
-        ) 
+        )
+    
+    for speaker_uuid, speaker_label in speakers_map.items():
+        try:
+            context = speaker_contexts.get(speaker_uuid, None)
+            context_section = f"""
+---
+Previous context:
+{context}
+---""" if context else ""
+            
+            prompt = f"""Given the full conversation below{' and the previous context' if context else ''} about {speaker_label}, return your analysis as a JSON object with the following structure:
+{{
+    "speaker_label": first and last name extracted from the conversation (if no information available, use null),
+    "context": {'updated context from the conversation and previous context' if context else 'context extracted from the conversation'}
+}}
+{context_section}
+--- 
+Full conversation:
+{formatted_text}
+---"""
+            
+            analysis = openai_processor.analyze_text(prompt)
+            analysis_data = json.loads(analysis["response"])
+            speaker = db.query(Speaker).filter(Speaker.profile_id == speaker_uuid).first()
+            if speaker:
+                speaker.speaker_label = analysis_data.get("speaker_label")
+                speaker.context = analysis_data["context"]
+                db.commit()
+                logger.info(f"Updated speaker {speaker_uuid} with new analysis data")
+            else:
+                logger.info(f"Speaker {speaker_uuid} not found in database")
+        except Exception as e:
+            logger.error(f"Failed to analyze speaker {speaker_label}: {str(e)}")
+    
+    return {
+        "audio_id": latest_audio.id,
+        "text": formatted_text,
+        "analysis": analysis["response"],
+    }

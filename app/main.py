@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.core.events import create_start_app_handler, create_stop_app_handler
-from app.api.v1.routes.cron import initialize_default_schedules
 import logging
 import requests
 import time
@@ -73,12 +72,6 @@ def get_ngrok_urls(retries=5, delay=2) -> Dict[str, Optional[str]]:
 @app.on_event("startup")
 async def startup_event():
     """Event handler that runs when the server starts"""
-    logger.info("Initializing default schedules...")
-    if initialize_default_schedules():
-        logger.info("Default schedules initialized successfully")
-    else:
-        logger.error("Failed to initialize default schedules")
-
     ngrok_urls = get_ngrok_urls()
     
     if ngrok_urls["backend"] or ngrok_urls["frontend"]:
@@ -104,6 +97,4 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Event handler that runs when the server shuts down"""
-    from app.api.v1.routes.cron import scheduler
-    scheduler.shutdown()
-    logger.info("Scheduler shutdown completed") 
+    logger.info("Server shutting down") 

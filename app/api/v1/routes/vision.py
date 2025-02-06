@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
 from app.api import deps
 from app.core.security import get_api_key
 from app.crud.crud_vision import crud_vision

@@ -14,18 +14,11 @@ Oasis is an audio processing and transcription service that provides speaker dia
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- SQLite
-- Docker and docker-compose (optional)
-
-## Requirements
-
-- Python 3.11+
-- Docker and docker-compose (optional)
+- Docker and docker-compose
 
 ## Installation
 
-### Local Development
+### Using Docker Compose
 
 1. Clone the repository:
 
@@ -34,91 +27,29 @@ git clone https://github.com/rbx-labs/oasis.git
 cd oasis
 ```
 
-2. Create a virtual environment:
-
-```bash
-python -m venv .venv-oasis
-source .venv-oasis/bin/activate  # On Windows: .venv-oasis\Scripts\activate
-```
-
-- To deactivate the virtual environment:
-
-```bash
-deactivate
-```
-
-3. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Create .env file:
+2. Create .env file:
 
 ```bash
 cp .env.example .env
 # Edit .env file with your settings
 ```
 
-5. Run the application:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### Docker Development
-
-#### Using Docker Compose (Recommended)
-
-1. Build and run with docker-compose:
+3. Build and run with docker-compose:
 
 ```bash
 docker-compose up --build
 ```
 
-2. Run in detached mode:
+4. Run in detached mode:
 
 ```bash
 docker-compose up -d
 ```
 
-3. Stop the containers:
+5. Stop the containers:
 
 ```bash
 docker-compose down
-```
-
-#### Using Docker
-
-1. Build the Docker image:
-
-```bash
-docker build -t oasis:latest .
-```
-
-2. Run the container:
-
-```bash
-docker run -d \
-  --name oasis_app \
-  -p 8000:8000 \
-  -v $(pwd):/app \
-  -v oasis_data:/app/data \
-  -e API_KEY=your-api-key \
-  oasis:latest
-```
-
-3. Stop the container:
-
-```bash
-docker stop oasis_app
-docker rm oasis_app
-```
-
-4. View logs:
-
-```bash
-docker logs -f oasis_app
 ```
 
 ## Ngrok Setup
@@ -250,37 +181,19 @@ All endpoints require API Key authentication via the `X-API-Key` header.
 
 ### Audio
 
-- `GET /api/v1/audio/all` - Get all audio files
 - `POST /api/v1/audio/upload` - Upload new audio file
-- `GET /api/v1/audio/latest` - Get the most recent audio file
-- `GET /api/v1/audio/{audio_id}` - Get a specific audio file by ID
-- `POST /api/v1/audio/latest/transcribe` - Transcribe latest audio using Azure STT
-- `POST /api/v1/audio/latest/transcribe2` - Transcribe latest audio using OpenAI Whisper
-- `GET /api/v1/audio/{audio_id}/download` - Download a specific audio file
-- `GET /api/v1/audio/latest/download` - Download the most recent audio file
 
 ### Transcription
 
-- `GET /api/v1/transcription/all` - Get all transcriptions
-- `GET /api/v1/transcription/latest` - Get the most recent transcription
-- `GET /api/v1/transcription/{transcription_id}` - Get a specific transcription by ID
 - `GET /api/v1/transcription/latest/analyze` - Analyze latest transcription using OpenAI
 
-### Diarization
+### Motion
 
-- `POST /api/v1/diarization/gladia/latest` - Perform speaker diarization on the latest audio
-- `GET /api/v1/diarization/raw/{raw_id}` - Get raw diarization results
-- `GET /api/v1/diarization/{diarization_id}` - Get processed diarization results
+- `POST /api/v1/motion/upload` - Upload motion data
 
-### Scheduler
+### Vision
 
-- `POST /api/v1/cron/jobs` - Create a new scheduled task
-- `GET /api/v1/cron/jobs` - List all scheduled tasks
-- `GET /api/v1/cron/jobs/{job_id}` - Get specific task details
-- `PUT /api/v1/cron/jobs/{job_id}` - Update task schedule
-- `POST /api/v1/cron/jobs/{job_id}/pause` - Pause a scheduled task
-- `POST /api/v1/cron/jobs/{job_id}/resume` - Resume a paused task
-- `DELETE /api/v1/cron/jobs/{job_id}` - Delete a scheduled task
+- `POST /api/v1/vision/upload` - Upload image data
 
 ## Contributing
 

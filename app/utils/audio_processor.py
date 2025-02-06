@@ -4,8 +4,6 @@ from app.models.audio import Audio as AudioModel
 import tempfile
 from pydub import AudioSegment
 from typing import Dict, Any, List, Tuple
-from app.schemas.audio import SpeakerClipCreate
-from app.crud.crud_speaker_clips import crud_speaker_clips
 import logging
 import torch
 import torchaudio
@@ -44,44 +42,7 @@ class AudioProcessor:
             )
         return audio
 
-    async def create_speaker_clips(self, audio_data: AudioSegment, segments: List[Any], audio_id: int, db: Session) -> Dict[str, Any]:
-        """Create speaker clips from segments"""
-        speaker_clips = {}
-        
-        for speaker in set(segment.speaker for segment in segments):
-            speaker_segments = [s for s in segments if s.speaker == speaker]
-            combined_audio = AudioSegment.empty()
-            
-            for segment in speaker_segments:
-                start_ms = int(segment.start_time * 1000)
-                end_ms = int(segment.end_time * 1000)
-                segment_audio = audio_data[start_ms:end_ms]
-                combined_audio += segment_audio
-            
-            # Export combined audio for the speaker
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_speaker:
-                combined_audio.export(temp_speaker.name, format='wav')
-                with open(temp_speaker.name, 'rb') as f:
-                    speaker_waveform = f.read()
-                
-                speaker_clip_data = SpeakerClipCreate(
-                    audio_id=audio_id,
-                    speaker=speaker,
-                    waveform=speaker_waveform,
-                    profile_id=None
-                )
-                db_clip = crud_speaker_clips.create(db, obj_in=speaker_clip_data)
-                speaker_clips[speaker] = db_clip
-        
-        if not speaker_clips:
-            raise HTTPException(
-                status_code=500,
-                detail="No speaker clips created"
-            )
-        
-        return speaker_clips
-
-    def process_audio(self, audio_bytes: bytes) -> Tuple[bytes, float]:
+    def process_audio(self, audio_bytes: bytes) -> Tuple[List[Dict[str, Any]], float, float, float]:
         """Process audio data using Silero VAD"""
         logger.debug(f"Processing audio data of size: {len(audio_bytes)} bytes")
         # Convert bytes to tensor

@@ -2,15 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-# Base Transcription schema without audio reference
-class TranscriptionBase(BaseModel):
-    id: int
-    text: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 class AudioBase(BaseModel):
     filename: str
 
@@ -29,7 +20,6 @@ class AudioUpdate(AudioBase):
 class Audio(AudioBase):
     id: int
     created_at: datetime
-    transcription: Optional[TranscriptionBase] = None  # Use TranscriptionBase to avoid circular reference
 
     class Config:
         from_attributes = True

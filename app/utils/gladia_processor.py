@@ -9,7 +9,6 @@ from app.crud.crud_speaker import crud_speaker
 from sqlalchemy.orm import Session
 import time
 import tempfile
-from typing import List, Any
 
 logger = logging.getLogger(__name__)
 

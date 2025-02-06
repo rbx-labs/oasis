@@ -15,8 +15,4 @@ class Audio(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    transcriptions = relationship("Transcription", back_populates="audio")
-    diarization_segments = relationship("DiarizationSegment", back_populates="audio")
-    speaker_clips = relationship("SpeakerClip", back_populates="audio")
-    conversations = relationship("Conversation", back_populates="audio")
     voice_segments = relationship("VoiceSegment", back_populates="audio", cascade="all, delete")

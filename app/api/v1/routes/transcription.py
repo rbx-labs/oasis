@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.schemas.analysis import Analysis
 from app.core.security import get_api_key
-from app.utils.openai_processing import OpenAIProcessor
+from app.utils.openai_processor import OpenAIProcessor
 import logging
 from datetime import datetime
 from app.models.audio import Audio as AudioModel

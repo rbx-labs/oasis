@@ -12,8 +12,7 @@ class OpenAIProcessor:
         context_section = f"""
 ---
 Previous context:
-{previous_context}
----""" if previous_context else ""
+{previous_context}""" if previous_context else ""
             
         prompt = f"""Given the full conversation below{' and the previous context' if previous_context else ''} about {speaker_label}, return your analysis as a JSON object with the following structure:
 {{
@@ -21,7 +20,7 @@ Previous context:
     "context": {'updated context from the conversation and previous context' if previous_context else 'context extracted from the conversation'}
 }}
 {context_section}
---- 
+---
 Full conversation:
 {conversation}
 ---"""

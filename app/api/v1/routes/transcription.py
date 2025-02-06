@@ -122,7 +122,7 @@ async def analyze_latest_transcription(
     speaker_contexts = {}
     db_speakers = db.query(Speaker).filter(Speaker.profile_id.in_(speaker_uuids)).all()
     for speaker in db_speakers:
-        speakers_map[speaker.profile_id] = speaker.speaker_label
+        speakers_map[speaker.profile_id] = speaker.speaker_label if speaker.speaker_label else speaker.profile_id
         speaker_contexts[speaker.profile_id] = speaker.context
 
     # Format the conversation text with speaker labels

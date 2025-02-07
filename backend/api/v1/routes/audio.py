@@ -49,22 +49,23 @@ async def upload_audio(
             crud_audio.remove(db, id=existing_audio.id)
             
         await file.seek(0)
-        contents = await file.read()
-        logger.info(f"Uploading file: {file.filename}, start_timestamp: {start_timestamp}, size: {len(contents)} bytes")
+        original_waveform = await file.read()
+        logger.info(f"Uploading file: {file.filename}, start_timestamp: {start_timestamp}, size: {len(original_waveform)} bytes")
         
-        segments, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(contents)
+        waveform, segments, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(original_waveform)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
 
         audio_in = AudioCreate(
             filename=file.filename,
-            waveform=contents,
+            original_waveform=original_waveform,
+            waveform=waveform,
             start_timestamp=start_timestamp,
             total_duration=total_duration,
             speech_duration=speech_duration
         )
 
         audio = crud_audio.create(db, obj_in=audio_in)
-
+        
         voice_segments = []
         for segment in segments:
             voice_segment_in = VoiceSegmentCreate(
@@ -77,11 +78,10 @@ async def upload_audio(
             )
             voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
             voice_segments.append(voice_segment)
-        
+
         for voice_segment in voice_segments:
             await gladia_processor.transcribe(voice_segment, db)
 
-        db.commit()
         return audio
         
     except Exception as e:

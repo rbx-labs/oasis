@@ -6,6 +6,7 @@ class AudioBase(BaseModel):
     filename: str
 
 class AudioCreate(AudioBase):
+    original_waveform: bytes
     waveform: bytes
     start_timestamp: int
     speech_duration: float

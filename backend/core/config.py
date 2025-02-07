@@ -1,6 +1,5 @@
 from typing import List, Optional
 from pydantic_settings import BaseSettings
-import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Oasis"

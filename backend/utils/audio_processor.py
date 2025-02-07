@@ -46,6 +46,8 @@ class AudioProcessor:
         logger.debug(f"Processing audio data of size: {len(audio_bytes)} bytes")
         # Convert bytes to tensor
         audio_tensor, sample_rate = self._load_audio(audio_bytes)
+        # Normalize audio signal
+        audio_tensor = audio_tensor / torch.max(torch.abs(audio_tensor))
         total_duration = len(audio_tensor[0]) / sample_rate
         logger.debug(f"Loaded audio tensor with shape: {audio_tensor.shape}, sample rate: {sample_rate}")
         
@@ -55,12 +57,11 @@ class AudioProcessor:
             self.model,
             sampling_rate=sample_rate,
             threshold=0.1,                  # 음성 감지 임계값을 더 낮춤
-            min_speech_duration_ms=500,     # 더 짧은 음성도 감지
+            min_speech_duration_ms=100,     # 더 짧은 음성도 감지
             min_silence_duration_ms=2000,   # 더 짧은 무음도 허용
             window_size_samples=512,        # 작은 윈도우 사이즈로 더 세밀한 감지
             speech_pad_ms=200               # 음성 구간 전후로 패딩 추가
         )
-
         logger.debug(f"Found {len(speech_timestamps)} speech segments")
 
         # Extract speech segments
@@ -87,12 +88,15 @@ class AudioProcessor:
             
         if not speech_segments:
             logger.warning("No speech segments detected, returning original audio")
-            return [], 0.0, total_duration, 0.0
+            return audio_tensor, [], 0.0, total_duration, 0.0
         
         speech_ratio = speech_duration / total_duration
         logger.info(f"Total duration: {total_duration:.2f}s, Speech duration: {speech_duration:.2f}s, Ratio: {speech_ratio:.2%}")
+        
+        waveform = io.BytesIO()
+        torchaudio.save(waveform, audio_tensor, sample_rate, format="wav")
 
-        return speech_segments, speech_ratio, total_duration, speech_duration
+        return waveform.getvalue(), speech_segments, speech_ratio, total_duration, speech_duration
 
     def _load_audio(self, audio_bytes: bytes) -> Tuple[torch.Tensor, int]:
         """Load audio from bytes into tensor"""

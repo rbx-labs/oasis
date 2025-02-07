@@ -6,7 +6,6 @@ from core.events import create_start_app_handler, create_stop_app_handler
 import logging
 import requests
 import time
-from typing import Dict, Optional
 from contextlib import asynccontextmanager
 
 # Configure logging
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    create_start_app_handler()
     retries = 5
     delay = 2
 
@@ -43,6 +43,8 @@ async def lifespan(app: FastAPI):
             print("Failed to fetch Ngrok URLs after retries or NGROK_AUTHTOKEN is not set.")
     
     yield  # Server is running
+    
+    create_stop_app_handler()
     
     # Shutdown
     logger.info("Server shutting down")

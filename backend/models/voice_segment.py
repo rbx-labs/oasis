@@ -2,6 +2,7 @@ from sqlalchemy import Column, Float, ForeignKey, Integer, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from db.base import Base
+from .gladia_response import GladiaResponse
 
 class VoiceSegment(Base):
     __tablename__ = "voice_segments"

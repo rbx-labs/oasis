@@ -43,49 +43,51 @@ async def upload_audio(
     - file: Audio file to upload
     - start_timestamp: Unix timestamp for the audio file
     """
-    existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
-    if existing_audio:
-        crud_audio.remove(db, id=existing_audio.id)
-        
-    await file.seek(0)  # Reset file pointer after reading
-    contents = await file.read()
-    logger.info(f"Uploading file: {file.filename}, start_timestamp: {start_timestamp}, size: {len(await file.read())} bytes")
-    
-    # Process audio with Silero VAD
     try:
+        existing_audio = crud_audio.get_by_filename(db, filename=file.filename)
+        if existing_audio:
+            crud_audio.remove(db, id=existing_audio.id)
+            
+        await file.seek(0)
+        contents = await file.read()
+        logger.info(f"Uploading file: {file.filename}, start_timestamp: {start_timestamp}, size: {len(contents)} bytes")
+        
         segments, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(contents)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
+
+        audio_in = AudioCreate(
+            filename=file.filename,
+            waveform=contents,
+            start_timestamp=start_timestamp,
+            total_duration=total_duration,
+            speech_duration=speech_duration
+        )
+
+        audio = crud_audio.create(db, obj_in=audio_in)
+
+        voice_segments = []
+        for segment in segments:
+            voice_segment_in = VoiceSegmentCreate(
+                audio_id=audio.id,
+                segment_id=segment["segment_id"],
+                waveform=segment["buffer"],
+                start_time=segment["start_ts"] + start_timestamp,
+                end_time=segment["end_ts"] + start_timestamp,
+                duration=(segment["end_ts"] - segment["start_ts"]) / 1000
+            )
+            voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
+            voice_segments.append(voice_segment)
+        
+        for voice_segment in voice_segments:
+            await gladia_processor.transcribe(voice_segment, db)
+
+        db.commit()
+        return audio
+        
     except Exception as e:
-        logger.error(f"Error processing audio: {str(e)}")
+        db.rollback()
+        logger.error(f"Error in upload_audio: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail="Failed to process audio file"
+            detail=f"Failed to process audio file: {str(e)}"
         )
-    
-    audio_in = AudioCreate(
-        filename=file.filename,
-        waveform=contents,
-        start_timestamp=start_timestamp,
-        total_duration=total_duration,
-        speech_duration=speech_duration
-    )
-
-    audio = crud_audio.create(db, obj_in=audio_in)
-
-    voice_segments = []
-    for segment in segments:
-        voice_segment_in = VoiceSegmentCreate(
-            audio_id=audio.id,
-            segment_id=segment["segment_id"],
-            waveform=segment["buffer"],
-            start_time=segment["start_ts"] + start_timestamp,
-            end_time=segment["end_ts"] + start_timestamp,
-            duration=(segment["end_ts"] - segment["start_ts"]) / 1000
-        )
-        voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
-        voice_segments.append(voice_segment)
-    
-    for voice_segment in voice_segments:
-        await gladia_processor.transcribe(voice_segment, db)
-
-    return audio

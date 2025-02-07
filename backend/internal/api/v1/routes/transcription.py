@@ -57,11 +57,11 @@ async def analyze_latest_transcription(
             "speaker_reidentification" in response_data["result"] and 
             "results" in response_data["result"]["speaker_reidentification"]):
             speaker_results = response_data["result"]["speaker_reidentification"]["results"]
-            for speaker_id, reident_results in speaker_results.items():
-                if reident_results and len(reident_results) > 0:
-                    speaker_uuid = reident_results[0].get("uuid")
-                    if speaker_uuid:
-                        speaker_uuids.add(speaker_uuid)
+            speakers = speaker_results if isinstance(speaker_results, list) else list(speaker_results.values())
+            for speaker in speakers:
+                speaker_uuid = speaker[0].get("uuid")
+                if speaker_uuid:
+                    speaker_uuids.add(speaker_uuid)
 
     # Query speakers from the database
     speakers_map = {}

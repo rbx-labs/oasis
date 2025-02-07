@@ -1,0 +1,13 @@
+Generic single-database configuration.
+
+# Initialize alembic
+docker-compose run --rm fastapi alembic init app/db/migrations
+
+# Create migration file
+docker-compose run --rm fastapi alembic revision --autogenerate -m "Migration message"
+
+# Apply migrations (before running docker)
+docker-compose run --rm fastapi alembic upgrade head
+
+# If migration files exist, they will be automatically applied when running docker
+docker-compose up

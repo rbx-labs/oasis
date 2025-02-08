@@ -21,6 +21,7 @@ class AudioUpdate(AudioBase):
 class Audio(AudioBase):
     id: int
     created_at: datetime
+    processed: bool
 
     class Config:
         from_attributes = True

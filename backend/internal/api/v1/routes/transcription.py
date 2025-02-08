@@ -23,14 +23,20 @@ async def analyze_latest_transcription(
     db: Session = Depends(session.get_db)
 ):
     """
-    Analyze the latest transcription using OpenAI by formatting voice segments with timestamps and speakers
+    Analyze the oldest unprocessed transcription using OpenAI by formatting voice segments with timestamps and speakers
     """
-    # Get the latest audio
-    latest_audio = db.query(AudioModel).order_by(AudioModel.created_at.desc()).first()
+    # Get the oldest unprocessed audio
+    latest_audio = (
+        db.query(AudioModel)
+        .filter(AudioModel.processed == False)
+        .order_by(AudioModel.created_at.asc())
+        .first()
+    )
+    
     if not latest_audio:
         raise HTTPException(
-            status_code=404,
-            detail="No audio recordings found"
+            status_code=200,
+            detail="No unprocessed audio recordings found"
         )
 
     # Get all voice segments and gladia responses for this audio, ordered by timestamp
@@ -99,8 +105,12 @@ async def analyze_latest_transcription(
     
     try:
         analysis = openai_processor.analyze_text(formatted_text)
-        logger.info(f"Generated analysis for audio {latest_audio.id}")
+        # Mark the audio as processed
+        latest_audio.processed = True
+        db.commit()
+        logger.info(f"Generated analysis for audio {latest_audio.id} and marked as processed")
     except Exception as e:
+        db.rollback()
         logger.error(f"Analysis failed: {str(e)}")
         raise HTTPException(
             status_code=500,

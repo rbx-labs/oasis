@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Integer, String, LargeBinary, DateTime
+from sqlalchemy import Column, Float, Integer, String, LargeBinary, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from db.base import Base
@@ -15,6 +15,7 @@ class Audio(Base):
     speech_duration = Column(Float)
     total_duration = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    processed = Column(Boolean, default=False)
 
     # Relationships
     voice_segments = relationship("VoiceSegment", back_populates="audio", cascade="all, delete")

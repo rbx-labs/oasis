@@ -114,8 +114,10 @@ class AudioProcessor:
                     # If mono, reshape to [1, samples]
                     waveform = waveform.unsqueeze(0)
                 else:
+                    # If stereo, just take the left channel
+                    waveform = waveform[:, 0].unsqueeze(0)
                     # If stereo, convert to mono and reshape to [1, samples]
-                    waveform = waveform.mean(dim=1).unsqueeze(0)
+                    # waveform = waveform.mean(dim=1).unsqueeze(0)
                 logger.debug(f"Successfully loaded audio file with sample rate: {sample_rate}")
                 return waveform, sample_rate
         except Exception as e:

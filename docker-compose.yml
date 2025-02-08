@@ -1,3 +1,5 @@
+name: oasis
+
 services:
   app:
     build:
@@ -26,7 +28,7 @@ services:
     env_file:
       - .env
     networks:
-      - oasis_network
+      - network
 
   public:
     build:
@@ -43,7 +45,7 @@ services:
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     networks:
-      - oasis_network
+      - network
     depends_on:
       - db
 
@@ -60,7 +62,7 @@ services:
     env_file:
       - ./backend/.env
     networks:
-      - oasis_network
+      - network
     depends_on:
       - db
 
@@ -72,7 +74,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - oasis_network
+      - network
     env_file:
       - ./backend/.env
 
@@ -89,7 +91,7 @@ services:
       - "8081:8081"
     command: yarn dev --port 8081
     networks:
-      - oasis_network
+      - network
 
   wallet:
     build:
@@ -102,7 +104,7 @@ services:
       - "3002:3002"
     command: uvicorn main:app --host 0.0.0.0 --port 3002 --reload
     networks:
-      - oasis_network
+      - network
 
   brain:
     build:
@@ -112,7 +114,7 @@ services:
       - ./brain:/brain
     command: python main.py
     networks:
-      - oasis_network
+      - network
 
   llm:
     build:
@@ -122,7 +124,7 @@ services:
     ports:
       - "11434:11434"
     networks:
-      - oasis_network
+      - network
 
   nginx:
     image: nginx:alpine
@@ -139,7 +141,7 @@ services:
       - wallet
       - llm
     networks:
-      - oasis_network
+      - network
 
   ngrok:
     image: ngrok/ngrok:latest
@@ -156,11 +158,11 @@ services:
     depends_on:
       - nginx
     networks:
-      - oasis_network
+      - network
 
 volumes:
   postgres_data:
 
 networks:
-  oasis_network:
+  network:
     driver: bridge

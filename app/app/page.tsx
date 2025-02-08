@@ -1,6 +1,8 @@
 import React from "react";
 import Chat from "./components/Chat";
 
+export const fetchCache = "force-no-store";
+
 async function getSpeakers() {
   const res = await fetch(`${process.env.INTERNAL_URL_BASE}/api/v1/speaker`, {
     headers: {
@@ -8,12 +10,11 @@ async function getSpeakers() {
     },
   });
   if (!res.ok) throw new Error("Failed to fetch speakers");
-  return res.json();
+  return await res.json();
 }
 
 export default async function Home() {
   const speakers = await getSpeakers();
-
   return (
     <main>
       <Chat speakers={speakers} />

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 interface ChatProps {
-  speakers: any; // 실제 타입에 맞게 정의하세요
+  speakers: any;
 }
 
 export default function Chat({ speakers }: ChatProps) {
@@ -90,10 +90,10 @@ export default function Chat({ speakers }: ChatProps) {
                 {speakers.map((speaker: any) => (
                   <tr key={speaker.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {speaker.id}
+                      {speaker.profile_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {speaker.name}
+                      {speaker.speaker_label}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(speaker.created_at).toLocaleDateString()}

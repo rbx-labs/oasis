@@ -19,6 +19,7 @@ async def get_all_speakers(
     """
     Get all speakers from the database
     """
+    print("Getting all speakers")
     try:
         speakers = crud_speaker.get_all_profiles(db)
         return speakers

@@ -106,7 +106,7 @@ async def analyze_latest_transcription(
             status_code=500,
             detail="Failed to analyze conversation"
         )
-    
+    logger.info(speakers_map)
     for speaker_uuid, speaker_label in speakers_map.items():
         try:
             analysis = openai_processor.speaker_analysis(
@@ -114,6 +114,7 @@ async def analyze_latest_transcription(
                 conversation=formatted_text,
                 previous_context=speaker_contexts.get(speaker_uuid, None)
             )
+            logger.info(analysis)
             analysis_data = json.loads(analysis["response"])
             speaker = db.query(Speaker).filter(Speaker.profile_id == speaker_uuid).first()
             if speaker:

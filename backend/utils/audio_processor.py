@@ -47,7 +47,7 @@ class AudioProcessor:
         # Convert bytes to tensor
         audio_tensor, sample_rate = self._load_audio(audio_bytes)
         # Normalize audio signal
-        audio_tensor = audio_tensor / torch.max(torch.abs(audio_tensor))
+        audio_tensor = (audio_tensor * 2 / torch.max(torch.abs(audio_tensor))) + 1
         total_duration = len(audio_tensor[0]) / sample_rate
         logger.debug(f"Loaded audio tensor with shape: {audio_tensor.shape}, sample rate: {sample_rate}")
         

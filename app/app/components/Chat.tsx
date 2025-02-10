@@ -82,6 +82,9 @@ export default function Chat({ speakers }: ChatProps) {
                     이름
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    컨텍스트
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     생성일
                   </th>
                 </tr>
@@ -89,11 +92,14 @@ export default function Chat({ speakers }: ChatProps) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {speakers.map((speaker: any) => (
                   <tr key={speaker.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-normal text-sm text-gray-900">
                       {speaker.profile_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {speaker.speaker_label}
+                    </td>
+                    <td className="px-6 py-4 whitespace-normal text-sm text-gray-900">
+                      {speaker.context}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(speaker.created_at).toLocaleDateString()}

@@ -5,6 +5,7 @@ from typing import Optional
 class SpeakerBase(BaseModel):
     profile_id: str
     speaker_label: Optional[str] = None
+    context: Optional[str] = None
 
 class SpeakerCreate(SpeakerBase):
     pass

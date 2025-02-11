@@ -18,7 +18,6 @@ export default async function Home() {
   return (
     <main>
       <Chat speakers={speakers} />
-      <img src="/images/homepage.png" alt="Homepage" className="mx-auto" />
     </main>
   );
 }

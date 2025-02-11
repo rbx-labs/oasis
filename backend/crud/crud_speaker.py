@@ -29,4 +29,22 @@ class CRUDSpeaker(CRUDBase[Speaker, SpeakerCreate, SpeakerUpdate]):
         """
         return db.query(Speaker).all()
 
+    def delete_profile(self, db: Session, speaker_id: str) -> bool:
+        """
+        Delete a speaker by ID.
+        """
+        speaker = db.query(Speaker).filter(Speaker.id == speaker_id).first()
+        if speaker:
+            db.delete(speaker)
+            db.commit()
+            return True
+        return False
+
+    def reset_all_profiles(self, db: Session) -> None:
+        """
+        Delete all speaker profiles.
+        """
+        db.query(Speaker).delete()
+        db.commit()
+
 crud_speaker = CRUDSpeaker(Speaker)

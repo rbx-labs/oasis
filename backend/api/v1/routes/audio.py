@@ -64,8 +64,6 @@ async def upload_audio(
             speech_duration=speech_duration
         )
 
-        audio = crud_audio.create(db, obj_in=audio_in)
-        
         voice_segments = []
         for segment in segments:
             voice_segment_in = VoiceSegmentCreate(
@@ -82,6 +80,8 @@ async def upload_audio(
         for voice_segment in voice_segments:
             await gladia_processor.transcribe(voice_segment, db)
 
+        audio = crud_audio.create(db, obj_in=audio_in)
+        
         return audio
         
     except Exception as e:

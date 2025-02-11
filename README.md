@@ -113,7 +113,6 @@ API_KEY=your-super-secret-api-key
 | AZURE_SPEECH_REGION | Azure Speech Services region          | your-azure-region     |
 | OPENAI_API_KEY      | OpenAI API key                        | your-openai-key       |
 | GLADIA_API_KEY      | Gladia API key for diarization        | your-gladia-key       |
-| API_BASE_URL        | Internal API base URL                 | http://localhost:8000 |
 | NGROK_AUTHTOKEN     | Ngrok authentication token (optional) | your-ngrok-auth-token |
 
 ## Database

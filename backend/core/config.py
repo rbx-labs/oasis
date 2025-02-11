@@ -7,11 +7,8 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Oasis API Server"
     API_V1_STR: str = "/api/v1"
     
-    # API Base URL
-    API_BASE_URL: str = "http://localhost:8000"
-
     # CORS settings
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:8081"]
     
     # API Key settings
     API_KEY: str

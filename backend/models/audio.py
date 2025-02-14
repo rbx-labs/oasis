@@ -15,6 +15,7 @@ class Audio(Base):
     speech_duration = Column(Float)
     total_duration = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    transcribed = Column(Boolean, default=False)
     processed = Column(Boolean, default=False)
 
     # Relationships

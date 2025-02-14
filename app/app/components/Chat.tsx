@@ -17,7 +17,7 @@ export default function Chat({ speakers }: ChatProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      setMessage({ type: "error", content: "파일을 선택해주세요." });
+      setMessage({ type: "error", content: "Please select a file." });
       return;
     }
 
@@ -41,15 +41,15 @@ export default function Chat({ speakers }: ChatProps) {
       });
 
       if (!response.ok) {
-        throw new Error("업로드 실패");
+        throw new Error("Upload failed");
       }
 
       setMessage({
         type: "success",
-        content: "파일이 성공적으로 업로드되었습니다.",
+        content: "File uploaded successfully.",
       });
       setFile(null);
-      // 파일 input 초기화
+      // Reset file input
       const fileInput = document.getElementById(
         "audioFile"
       ) as HTMLInputElement;
@@ -57,7 +57,7 @@ export default function Chat({ speakers }: ChatProps) {
     } catch (error) {
       setMessage({
         type: "error",
-        content: "파일 업로드 중 오류가 발생했습니다.",
+        content: "An error occurred during file upload.",
       });
       console.error("Error:", error);
     } finally {
@@ -68,9 +68,11 @@ export default function Chat({ speakers }: ChatProps) {
   return (
     <div className="mx-auto p-4">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        {/* 스피커 테이블 */}
+        {/* Speaker Table */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4">등록된 화자 목록</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Registered Speakers List
+          </h2>
           <div className="overflow-x-auto">
             <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -79,13 +81,13 @@ export default function Chat({ speakers }: ChatProps) {
                     ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
-                    이름
+                    Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    컨텍스트
+                    Context
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    생성일
+                    Created At
                   </th>
                 </tr>
               </thead>
@@ -111,14 +113,14 @@ export default function Chat({ speakers }: ChatProps) {
           </div>
         </div>
 
-        {/* 파일 업로드 폼 */}
+        {/* File Upload Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="audioFile"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              WAV 파일 선택
+              Select WAV File
             </label>
             <input
               id="audioFile"
@@ -149,10 +151,10 @@ export default function Chat({ speakers }: ChatProps) {
             {isLoading ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                업로드 중...
+                Uploading...
               </div>
             ) : (
-              "업로드"
+              "Upload"
             )}
           </button>
         </form>

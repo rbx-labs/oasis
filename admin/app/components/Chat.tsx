@@ -72,9 +72,11 @@ export default function Chat() {
   return (
     <div className="mx-auto p-4">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        {/* 스피커 테이블 */}
+        {/* Speaker Table */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold mb-4">등록된 화자 목록</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Registered Speakers List
+          </h2>
           <button
             onClick={handleResetSpeakers}
             className="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
@@ -89,13 +91,13 @@ export default function Chat() {
                     ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
-                    이름
+                    Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    컨텍스트
+                    Context
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    생성일
+                    Created At
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions

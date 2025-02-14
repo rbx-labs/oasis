@@ -28,7 +28,7 @@ async def analyze_latest_transcription(
     # Get the oldest unprocessed audio
     latest_audio = (
         db.query(AudioModel)
-        .filter(AudioModel.processed == False)
+        .filter(AudioModel.transcribed == True and AudioModel.processed == False)
         .order_by(AudioModel.created_at.asc())
         .first()
     )

@@ -8,6 +8,8 @@ services:
     container_name: oasis_app
     volumes:
       - ./app:/app
+      - /app/node_modules
+      - /app/.next
     ports:
       - "8000:8000"
     environment:

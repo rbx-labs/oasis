@@ -13,7 +13,7 @@ class AzureSpeechProcessor:
     def __init__(self):
         if not settings.AZURE_SPEECH_KEY or not settings.AZURE_SPEECH_REGION:
             logger.error("Azure Speech configuration is missing. Skipping AzureSpeechProcessor initialization.")
-
+            return
         self.speech_config = speechsdk.SpeechConfig(
             subscription=settings.AZURE_SPEECH_KEY,
             region=settings.AZURE_SPEECH_REGION

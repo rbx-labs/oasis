@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     
     # Azure Speech Settings
-    AZURE_SPEECH_KEY: str
-    AZURE_SPEECH_REGION: str
+    AZURE_SPEECH_KEY: Optional[str] = None
+    AZURE_SPEECH_REGION: Optional[str] = None
     
     # OpenAI API Key
     OPENAI_API_KEY: str

@@ -76,13 +76,13 @@ http://localhost:4040
 
 Once the application is running, you can access the interactive API documentation:
 
-- Swagger UI: `http://localhost:8000/docs`
+- Swagger UI: `http://localhost:8080/docs`
 
   - Interactive API testing interface
   - Detailed request/response examples
   - Try out API endpoints directly in the browser
 
-- ReDoc: `http://localhost:8000/redoc`
+- ReDoc: `http://localhost:8080/redoc`
   - Clean and organized documentation
   - Detailed schema information
   - Easy-to-read format
@@ -95,7 +95,7 @@ The API uses API Key authentication. Include the API key in your requests:
 
 ```bash
 # Example: Get latest audio file
-curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/audio/latest
+curl -H "X-API-Key: your-api-key" http://localhost:8080/api/v1/audio/latest
 ```
 
 All requests must include the `X-API-Key` header with a valid API key. The API key should be set in your `.env` file:

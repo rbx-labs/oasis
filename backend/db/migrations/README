@@ -1,7 +1,7 @@
 Generic single-database configuration.
 
 # Initialize alembic
-docker-compose run --rm fastapi alembic init app/db/migrations
+docker-compose run --rm fastapi alembic init db/migrations
 
 # Create migration file
 docker-compose run --rm fastapi alembic revision --autogenerate -m "Migration message"

@@ -2,7 +2,11 @@
 
 import React, { useState } from "react";
 
-export default function AudioUploadForm() {
+interface AudioUploadFormProps {
+  speakers: any;
+}
+
+export default function AudioUploadForm({ speakers }: AudioUploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{
@@ -13,7 +17,7 @@ export default function AudioUploadForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      setMessage({ type: "error", content: "파일을 선택해주세요." });
+      setMessage({ type: "error", content: "Please select a file." });
       return;
     }
 
@@ -37,15 +41,15 @@ export default function AudioUploadForm() {
       });
 
       if (!response.ok) {
-        throw new Error("업로드 실패");
+        throw new Error("Upload failed");
       }
 
       setMessage({
         type: "success",
-        content: "파일이 성공적으로 업로드되었습니다.",
+        content: "File uploaded successfully.",
       });
       setFile(null);
-      // 파일 input 초기화
+      // Reset file input
       const fileInput = document.getElementById(
         "audioFile"
       ) as HTMLInputElement;
@@ -53,7 +57,7 @@ export default function AudioUploadForm() {
     } catch (error) {
       setMessage({
         type: "error",
-        content: "파일 업로드 중 오류가 발생했습니다.",
+        content: "An error occurred during file upload.",
       });
       console.error("Error:", error);
     } finally {
@@ -62,49 +66,99 @@ export default function AudioUploadForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor="audioFile"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          WAV 파일 선택
-        </label>
-        <input
-          id="audioFile"
-          type="file"
-          accept=".wav"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {message && (
-        <div
-          className={`p-3 rounded-md ${
-            message.type === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {message.content}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isLoading || !file}
-        className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        {isLoading ? (
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-            업로드 중...
+    <div className="mx-auto p-4">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        {/* Speaker Table */}
+        <div className="mb-12">
+          <h2 className="text-xl font-semibold mb-4">
+            Registered Speakers List
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Context
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created At
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {speakers.map((speaker: any) => (
+                  <tr key={speaker.id}>
+                    <td className="px-6 py-4 whitespace-normal text-sm text-gray-900">
+                      {speaker.profile_id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {speaker.speaker_label}
+                    </td>
+                    <td className="px-6 py-4 whitespace-normal text-sm text-gray-900">
+                      {speaker.context}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(speaker.created_at).getTime()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          "업로드"
-        )}
-      </button>
-    </form>
+        </div>
+
+        {/* File Upload Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="audioFile"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Select WAV or M4A File
+            </label>
+            <input
+              id="audioFile"
+              type="file"
+              accept=".wav, .m4a"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {message && (
+            <div
+              className={`p-3 rounded-md ${
+                message.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {message.content}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading || !file}
+            className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Uploading...
+              </div>
+            ) : (
+              "Upload"
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

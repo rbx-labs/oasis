@@ -28,11 +28,11 @@ async def analyze_latest_transcription(
     # Get the oldest unprocessed audio
     latest_audio = (
         db.query(AudioModel)
-        .filter(AudioModel.transcribed == True and AudioModel.processed == False)
+        .filter(AudioModel.transcribed == True, AudioModel.processed == False)
         .order_by(AudioModel.created_at.asc())
         .first()
     )
-    
+
     if not latest_audio:
         raise HTTPException(
             status_code=200,
@@ -106,11 +106,8 @@ async def analyze_latest_transcription(
     try:
         analysis = openai_processor.analyze_text(formatted_text)
         # Mark the audio as processed
-        latest_audio.processed = True
-        db.commit()
         logger.info(f"Generated analysis for audio {latest_audio.id} and marked as processed")
     except Exception as e:
-        db.rollback()
         logger.error(f"Analysis failed: {str(e)}")
         raise HTTPException(
             status_code=500,
@@ -130,12 +127,22 @@ async def analyze_latest_transcription(
             if speaker:
                 speaker.speaker_label = analysis_data.get("speaker_label")
                 speaker.context = analysis_data["context"]
-                db.commit()
                 logger.info(f"Updated speaker {speaker_uuid} with new analysis data")
             else:
                 logger.info(f"Speaker {speaker_uuid} not found in database")
         except Exception as e:
             logger.error(f"Failed to analyze speaker {speaker_label}: {str(e)}")
+
+    latest_audio.processed = True
+
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update speaker analysis data"
+        )
     
     return {
         "audio_id": latest_audio.id,

@@ -12,6 +12,7 @@ import soundfile as sf
 import warnings
 from openai import OpenAI
 from core.config import settings
+from pydub import AudioSegment
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,13 @@ class AudioProcessor:
         torchaudio.save(waveform, audio_tensor, sample_rate, format="wav")
 
         return waveform.getvalue(), speech_segments, speech_ratio, total_duration, speech_duration
+
+    def convert_m4a_to_wav(self, m4a_data):
+        # Convert m4a bytes to wav using pydub
+        audio = AudioSegment.from_file(io.BytesIO(m4a_data), format="m4a")
+        wav_io = io.BytesIO()
+        audio.export(wav_io, format="wav")
+        return wav_io.getvalue()
 
     def _load_audio(self, audio_bytes: bytes) -> Tuple[torch.Tensor, int]:
         """Load audio from bytes into tensor"""

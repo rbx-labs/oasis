@@ -7,7 +7,8 @@ WORKDIR /backend
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    libgomp1
+    libgomp1 \
+    ffmpeg
 
 # Install Python dependencies
 COPY requirements.txt .

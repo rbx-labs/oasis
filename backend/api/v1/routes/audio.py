@@ -13,6 +13,7 @@ from utils.audio_processor import AudioProcessor
 from utils.gladia_processor import GladiaProcessor
 from utils.whisper_processor import WhisperProcessor
 from utils.azure_speech_processor import AzureSpeechProcessor
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -52,6 +53,11 @@ async def upload_audio(
         original_waveform = await file.read()
         logger.info(f"Uploading file: {file.filename}, start_timestamp: {start_timestamp}, size: {len(original_waveform)} bytes")
         
+        # Check file format and convert if necessary
+        if file.filename.endswith('.m4a'):
+            logger.info("Converting .m4a file to .wav format for processing")
+            original_waveform = audio_processor.convert_m4a_to_wav(original_waveform)
+        
         waveform, segments, speech_ratio, total_duration, speech_duration = audio_processor.process_audio(original_waveform)
         logger.info(f"Processed audio file. Speech ratio: {speech_ratio:.2%}")
 
@@ -79,8 +85,11 @@ async def upload_audio(
             voice_segment = crud_voice_segment.create(db, obj_in=voice_segment_in)
             voice_segments.append(voice_segment)
 
-        for voice_segment in voice_segments:
-            await gladia_processor.transcribe(voice_segment, db)
+        # Run transcription tasks in parallel
+        transcription_tasks = [
+            gladia_processor.transcribe(voice_segment, db) for voice_segment in voice_segments
+        ]
+        await asyncio.gather(*transcription_tasks)
         
         audio.transcribed = True
         db.commit()

@@ -45,7 +45,6 @@ ENV/
 
 # Database
 *.db
-*.sqlite3
 sql_app.db
 
 # Tests

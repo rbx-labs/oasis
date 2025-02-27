@@ -106,19 +106,20 @@ API_KEY=your-super-secret-api-key
 
 ## Environment Variables
 
-| Variable            | Description                           | Default               |
-| ------------------- | ------------------------------------- | --------------------- |
-| API_KEY             | API authentication key                | your-api-key          |
-| AZURE_SPEECH_KEY    | Azure Speech Services key             | your-azure-speech-key |
-| AZURE_SPEECH_REGION | Azure Speech Services region          | your-azure-region     |
-| OPENAI_API_KEY      | OpenAI API key                        | your-openai-key       |
-| GLADIA_API_KEY      | Gladia API key for diarization        | your-gladia-key       |
-| API_BASE_URL        | Internal API base URL                 | http://localhost:8000 |
-| NGROK_AUTHTOKEN     | Ngrok authentication token (optional) | your-ngrok-auth-token |
+| Variable          | Description                           | Default                |
+| ----------------- | ------------------------------------- | ---------------------- |
+| API_KEY           | API authentication key                | your-api-key           |
+| OPENAI_API_KEY    | OpenAI API key                        | your-openai-key        |
+| GLADIA_API_KEY    | Gladia API key for diarization        | your-gladia-key        |
+| POSTGRES_HOST     | Docker service name running Postgres  | db                     |
+| POSTGRES_USER     | Postgres user name                    | your-postgres-user     |
+| POSTGRES_PASSWORD | Postgres password                     | your-postgres-password |
+| POSTGRES_DB       | Postgres db name                      | your-postgres-db       |
+| NGROK_AUTHTOKEN   | Ngrok authentication token (optional) | your-ngrok-auth-token  |
 
 ## Database
 
-The project uses SQLite as the database, stored in `data/sql_app.db`. The database file is automatically created when the application starts.
+The project uses Postgres as the database running on a docker container. See docker-compose.yml
 
 ## Docker Commands
 
@@ -137,30 +138,6 @@ docker-compose down
 # View logs
 docker-compose logs -f
 ```
-
-### Data Persistence
-
-The project uses Docker volumes for SQLite database persistence:
-
-```bash
-# Stop containers but preserve data
-docker-compose down
-
-# Stop containers and remove all data
-docker-compose down -v
-
-# List all volumes
-docker volume ls
-
-# Inspect volume details
-docker volume inspect oasis_sqlite_data
-```
-
-The SQLite database is stored in a Docker volume named `sqlite_data`. This ensures that:
-
-- Data persists between container restarts
-- Data is preserved when containers are stopped
-- Data is only removed when explicitly using the `-v` flag
 
 ### Container Management
 

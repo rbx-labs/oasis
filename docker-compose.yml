@@ -1,12 +1,15 @@
-version: "3.8"
+name: oasis
 
 services:
-  fastapi:
-    build: .
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
     container_name: oasis_app
     volumes:
-      - .:/app
-      - ./data:/data
+      - ./app:/app
+      - /app/node_modules
+      - /app/.next
     ports:
       - "8000:8000"
     environment:
@@ -27,25 +30,103 @@ services:
     env_file:
       - .env
     networks:
-      - oasis_network
+      - network
 
-  frontend:
+  public:
     build:
-      context: ./frontend
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: oasis_frontend
+    container_name: oasis_public
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - ./backend:/backend
     ports:
       - "3000:3000"
+    command: uvicorn main_public:app --host 0.0.0.0 --port 3000 --reload
+    env_file:
+      - ./backend/.env
     environment:
-      - NEXT_PUBLIC_API_URL=/api
-    depends_on:
-      - fastapi
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     networks:
-      - oasis_network
+      - network
+    depends_on:
+      - db
+
+  internal:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oasis_internal
+    volumes:
+      - ./backend:/backend
+    ports:
+      - "3001:3001"
+    command: uvicorn main_internal:app --host 0.0.0.0 --port 3001 --reload
+    env_file:
+      - ./backend/.env
+    networks:
+      - network
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: oasis_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - network
+    env_file:
+      - ./backend/.env
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: oasis_admin
+    volumes:
+      - ./admin:/admin
+      - /admin/node_modules
+      - /admin/.next
+    ports:
+      - "8081:8081"
+    command: yarn dev --port 8081
+    networks:
+      - network
+
+  wallet:
+    build:
+      context: ./wallet
+      dockerfile: Dockerfile
+    container_name: oasis_wallet
+    volumes:
+      - ./wallet:/wallet
+    ports:
+      - "3002:3002"
+    command: uvicorn main:app --host 0.0.0.0 --port 3002 --reload
+    networks:
+      - network
+
+  brain:
+    build:
+      context: ./brain
+    container_name: oasis_brain
+    volumes:
+      - ./brain:/brain
+    command: python main.py
+    networks:
+      - network
+
+  llm:
+    build:
+      context: ./llm
+      dockerfile: Dockerfile
+    container_name: oasis_llm
+    ports:
+      - "11434:11434"
+    networks:
+      - network
 
   nginx:
     image: nginx:alpine
@@ -55,10 +136,14 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - fastapi
-      - frontend
+      - app
+      - public
+      - internal
+      - admin
+      - wallet
+      - llm
     networks:
-      - oasis_network
+      - network
 
   ngrok:
     image: ngrok/ngrok:latest
@@ -71,12 +156,15 @@ services:
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       - nginx
     networks:
-      - oasis_network
+      - network
+
+volumes:
+  postgres_data:
 
 networks:
-  oasis_network:
+  network:
     driver: bridge

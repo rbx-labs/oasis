@@ -146,14 +146,14 @@ services:
     ports:
       - "4040:4040"
     command: start --all --config=/etc/ngrok.yml
-    environment:
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     env_file:
       - ./backend/.env
-    depends_on:
-      - nginx
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     networks:
       - network
+    depends_on:
+      - nginx
 
 volumes:
   postgres_data:

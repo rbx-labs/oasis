@@ -25,7 +25,8 @@ async def lifespan(app: FastAPI):
         for _ in range(retries):
             try:
                 response = requests.get("http://ngrok:4040/api/tunnels")
-                tunnels = response.json().get("tunnels", [])
+                tunnels = response.json().get("tunnels", [])                
+                base_url = None
                 
                 # Get the URL from the single tunnel
                 for tunnel in tunnels:

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # CORS settings
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:8081"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:8081", "http://localhost:8080"]
     
     # API Key settings
     API_KEY: str

@@ -32,13 +32,16 @@ export default function AudioUploadForm({ speakers }: AudioUploadFormProps) {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/v1/audio/upload", {
-        method: "POST",
-        body: formData,
-        headers: {
-          "X-API-Key": "your-super-secret-api-key",
-        },
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL_BASE}/api/v1/audio/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "X-API-Key": "your-super-secret-api-key",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Upload failed");

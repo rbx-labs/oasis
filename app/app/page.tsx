@@ -1,5 +1,6 @@
 import React from "react";
 import AudioUploadForm from "./components/AudioUploadForm";
+import Chat from "./components/Chat";
 
 export const fetchCache = "force-no-store";
 
@@ -17,6 +18,7 @@ export default async function Home() {
   const speakers = await getSpeakers();
   return (
     <main>
+      <Chat />
       <AudioUploadForm speakers={speakers} />
     </main>
   );

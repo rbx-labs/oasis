@@ -11,24 +11,10 @@ services:
       - /app/node_modules
       - /app/.next
     ports:
-      - "8000:8000"
-    environment:
-      - API_KEY=${API_KEY}
-      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
-      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
-    command: >
-      sh -c "
-        if [ -d '/app/app/db/migrations/versions' ] && [ -n "$(ls -A /app/app/db/migrations/versions/)" ]; then
-          echo 'Applying migrations...' &&
-          alembic upgrade head;
-        else
-          echo 'No migrations found. Please create migrations first.';
-        fi &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-      "
-    restart: unless-stopped
+      - "8080:8080"
+    command: yarn dev --port 8080
     env_file:
-      - .env
+      - ./app/.env
     networks:
       - network
 
@@ -164,6 +150,7 @@ services:
 
 volumes:
   postgres_data:
+
 
 networks:
   network:
